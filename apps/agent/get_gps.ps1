@@ -54,29 +54,28 @@ if ($lat -eq 0 -or $acc -gt 1000) {
     } catch {}
 }
 
-# --- Phase 3: Network Awareness (SSID Detection) ---
+# --- Phase 3: Network Awareness (BSSID / AP Detection) ---
 $ssid = "Unknown Network"
 try {
+    # Get the current connected SSID
     $networkInfo = netsh wlan show interfaces | Select-String "^\s+SSID\s+:\s+(.*)$"
     if ($networkInfo) {
         $ssid = $networkInfo.Matches.Groups[1].Value.Trim()
     }
-} catch {}
-
-# --- Phase 4: IP-Based Fallback (ONLY IF HARDWARE FAILS COMPLETELY) ---
-if ($lat -eq 0 -or $acc -gt 50000) {
-    try {
-        # Check if we are potentially on a proxy/ISP that reports Bangalore
-        $ipInfo = Invoke-RestMethod -Uri "http://ip-api.com/json/" -ErrorAction SilentlyContinue
-        if ($ipInfo.status -eq "success") {
-            # If IP reports Bangalore but we suspect the user is elsewhere, we flag it
-            # For now, we use it only as a last resort
-            $lat = $ipInfo.lat
-            $lng = $ipInfo.lon
-            $acc = 35000 # City level
+    
+    # Analyze 2 to 3 nearest access points (BSSIDs) to augment location context
+    $bssidList = @()
+    $networks = netsh wlan show networks mode=bssid
+    $bssids = $networks | Select-String -Pattern "BSSID\s+\d+\s+:\s+([0-9a-fA-F:]+)"
+    foreach ($b in $bssids) {
+        if ($bssidList.Count -lt 3) {
+            $bssidList += $b.Matches.Groups[1].Value.Trim()
         }
-    } catch {}
-}
+    }
+    if ($bssidList.Count -gt 0) {
+        $ssid = "$ssid [Nearby APs: $($bssidList -join '| ')]"
+    }
+} catch {}
 
 # --- Final Output ---
 if ($lat -ne 0 -and $lng -ne 0) {

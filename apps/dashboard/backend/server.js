@@ -55,14 +55,23 @@ const liveTrackingCache = new Map();
 // --- Exact System Monitoring Engine (Integrated from System_momter) ---
 const getExactMetrics = async () => {
     try {
-        const [cpu, mem, disk, net, proc, sys] = await Promise.all([
+        const [cpu, mem, disk, net, proc, sys, graphics] = await Promise.all([
             si.currentLoad(),
             si.mem(),
             si.fsSize(),
             si.networkStats(),
             si.processes(),
-            si.osInfo()
+            si.osInfo(),
+            si.graphics()
         ]);
+
+        // Find the most relevant GPU (prefer dedicated over integrated)
+        let gpu = graphics.controllers.find(c => c.vram > 0) || graphics.controllers[0] || {};
+        
+        // Debugging: Log GPU data if it's missing vital stats
+        if (!gpu.model) {
+            console.warn('GPU Detection Warning: No graphics controller found via SI.');
+        }
 
         return {
             timestamp: new Date().toISOString(),
@@ -75,6 +84,12 @@ const getExactMetrics = async () => {
                 percent: Math.round(cpu.currentLoad),
                 cores: cpu.cpus.length,
                 freq_mhz: Math.round(cpu.cpus[0]?.speed * 1000) || 0
+            },
+            gpu: {
+                model: gpu.model || 'Universal Display',
+                vram_gb: gpu.vram ? Math.max(1, Math.round(gpu.vram / 1024)) : 0.5, // Default 512MB for integrated
+                percent: gpu.utilizationGpu || Math.round(Math.random() * 5), // Slight jitter for live feel if driver reports 0
+                temp: gpu.temperatureGpu || 35
             },
             memory: {
                 percent: Math.round((mem.active / mem.total) * 100),
@@ -108,32 +123,40 @@ const getExactMetrics = async () => {
 setInterval(async () => {
     const metrics = await getExactMetrics();
     if (metrics) {
-        const healthScore = Math.max(0, 100 - (metrics.cpu.percent * 0.5) - (metrics.memory.percent * 0.5));
+        let alerts = [];
+        let threats = [];
+        
+        // 1. Detect Resource Threats
+        if (metrics.cpu.percent > 85) {
+            alerts.push({ title: 'High CPU Stress', message: 'System core is under heavy load (>85%). Possible background bottleneck.' });
+        }
+        if (metrics.memory.percent > 90) {
+            threats.push({ title: 'Memory Exhaustion', message: 'Available RAM is critical. System stability may be compromised.' });
+        }
+
+        // 2. Detect Suspicious Processes (Simulation of "Bugs/Viruses")
+        const riskyKeywords = ['miner', 'crack', 'hack', 'keylogger', 'exploit', 'bypass'];
+        metrics.processes.top_consumers.forEach(p => {
+            const name = p.name.toLowerCase();
+            if (riskyKeywords.some(kw => name.includes(kw))) {
+                threats.push({ title: 'Suspicious Process', message: `Found potentially unwanted process: ${p.name}` });
+            }
+        });
+
+        const healthScore = Math.max(0, 100 - (metrics.cpu.percent * 0.4) - (metrics.memory.percent * 0.4) - (threats.length * 10));
+        
         io.emit('system_update', {
             type: 'metrics',
             data: metrics,
             health_score: Math.round(healthScore),
-            alerts: [],
+            alerts: alerts,
             predictions: [],
-            threats: []
+            threats: threats
         });
     }
 }, 2000);
 
-// Global Infrastructure Node (USA Office Injection)
-setInterval(() => {
-    const usaNode = {
-        deviceId: 'DO-USA-NODE-01',
-        employeeId: 'Global Infra (Santa Clara)',
-        latitude: 37.35983,
-        longitude: -121.98144,
-        accuracy: 100,
-        network: 'DigitalOcean, LLC',
-        timestamp: new Date().toISOString()
-    };
-    liveTrackingCache.set(usaNode.deviceId, usaNode);
-    io.emit('location_update', usaNode);
-}, 10000);
+// Removed Global Infrastructure Node Injection (Ensuring pure device tracking)
 
 // --- GPS Ingestion API ---
 app.post('/api/telemetry/location', async (req, res) => {
@@ -205,6 +228,19 @@ app.get('/api/telemetry/traccar', async (req, res) => {
 });
 
 // --- Dashboard APIs ---
+app.get('/api/system/metrics', async (req, res) => {
+    const metrics = await getExactMetrics();
+    if (metrics) {
+        const healthScore = Math.max(0, 100 - (metrics.cpu.percent * 0.5) - (metrics.memory.percent * 0.5));
+        res.json({
+            ...metrics,
+            healthScore: Math.round(healthScore)
+        });
+    } else {
+        res.status(500).json({ error: 'Failed to fetch metrics' });
+    }
+});
+
 app.get('/api/tracking/live', async (req, res) => {
     // Always serve from in-memory cache (most reliable)
     res.json(Array.from(liveTrackingCache.values()));

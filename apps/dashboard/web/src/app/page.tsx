@@ -19,7 +19,16 @@ import {
   Shield,
   Menu,
   Map as MapIcon,
-  Navigation
+  Navigation,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  Radar,
+  LineChart,
+  Target,
+  FileSearch,
+  Fingerprint,
+  Bell
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { generateEnterpriseReport } from './utils/reportEngine';
@@ -48,7 +57,7 @@ import {
   ReferenceLine
 } from 'recharts';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['var(--accent-blue)', 'var(--accent-green)', 'var(--accent-cyan)', 'var(--accent-purple)', 'var(--status-warning)', 'var(--accent-indigo)'];
 
 const formatDuration = (seconds: number) => {
   const h = Math.floor(seconds / 3600);
@@ -107,8 +116,8 @@ function AppUsageChart({ stats, isPrint = false }: any) {
   if (!isClient) return <div style={{ height: '400px' }} />;
   if (data.length === 0) {
     return (
-      <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', background: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }}>
-        No activity data tracked yet.
+      <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: 'var(--bg-tertiary)', borderRadius: '20px', border: '1px solid var(--border-subtle)' }}>
+        No telemetry data synchronized.
       </div>
     );
   }
@@ -139,13 +148,16 @@ function AppUsageChart({ stats, isPrint = false }: any) {
               data={activeData}
               cx="50%"
               cy="50%"
-              innerRadius={isPrint ? "40%" : "55%"}
-              outerRadius={isPrint ? "70%" : "80%"}
-              paddingAngle={5}
+              innerRadius={isPrint ? "40%" : "60%"}
+              outerRadius={isPrint ? "70%" : "85%"}
+              paddingAngle={4}
               dataKey="value"
               startAngle={0}
               endAngle={360}
-              isAnimationActive={false}
+              isAnimationActive={!isPrint}
+              animationDuration={1500}
+              animationBegin={0}
+              stroke="none"
             >
               {activeData.map((entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -153,8 +165,14 @@ function AppUsageChart({ stats, isPrint = false }: any) {
             </Pie>
             {!isPrint && (
               <Tooltip 
-                contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px' }}
-                itemStyle={{ color: '#fafafa' }}
+                contentStyle={{ 
+                  background: 'var(--bg-secondary)', 
+                  border: '1px solid var(--border-strong)', 
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  color: 'var(--text-primary)'
+                }}
+                itemStyle={{ color: 'var(--text-primary)', fontSize: '0.8rem', fontWeight: 600 }}
               />
             )}
           </PieChart>
@@ -314,8 +332,8 @@ export default function Dashboard() {
     return `${h}h ${m}m ${s}s`;
   };
 
-  const getAppIcon = (app: string, size = 24) => {
-    const name = app.toLowerCase();
+  const getAppIcon = (app: string | undefined | null, size = 24) => {
+    const name = (app || 'system').toLowerCase();
     if (name.includes('chrome') || name.includes('edge') || name.includes('browser')) return <Globe size={size} />;
     if (name.includes('code') || name.includes('vscode')) return <Code size={size} />;
     if (name.includes('terminal') || name.includes('cmd') || name.includes('powershell')) return <Terminal size={size} />;
@@ -338,100 +356,112 @@ export default function Dashboard() {
     <div style={{ 
       display: 'flex', 
       height: '100vh', 
-      backgroundColor: '#09090b', 
-      color: '#fafafa',
+      backgroundColor: 'var(--bg-primary)', 
+      color: 'var(--text-primary)',
       fontFamily: 'var(--font-geist-sans), Inter, system-ui, sans-serif'
     }}>
       {/* Sidebar */}
       <aside style={{ 
-        width: sidebarCollapsed ? '80px' : '280px', 
-        borderRight: '1px solid #27272a', 
+        width: sidebarCollapsed ? '64px' : '240px', 
+        borderRight: '1px solid var(--border-subtle)', 
         display: 'flex', 
         flexDirection: 'column',
-        background: '#09090b',
-        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        overflow: 'hidden',
+        background: 'var(--bg-primary)',
+        transition: 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        overflow: 'visible',
+        position: 'relative',
         zIndex: 50
       }}>
-        {/* Sidebar Header - Logo & Menu */}
         <div style={{ 
-          height: '60px', 
-          background: 'rgba(9, 9, 11, 0.8)', 
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid #27272a',
+          height: '56px', 
+          background: 'transparent', 
           display: 'flex',
           alignItems: 'center',
           justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
           padding: sidebarCollapsed ? '0' : '0 1rem',
-          gap: '0.5rem',
           flexShrink: 0
         }}>
-          {/* Shield Icon */}
-          <div style={{ 
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-            width: '36px', 
-            height: '36px', 
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-            flexShrink: 0
-          }}>
-            <Shield size={18} color="white" />
+          {/* Logo Group */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%)', 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 0 15px rgba(31, 111, 235, 0.3)'
+            }}>
+              <Shield size={18} color="#fff" fill="#fff" />
+            </div>
+            {!sidebarCollapsed && <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>WorkSphere</span>}
           </div>
 
-          {/* Menu Toggle */}
+          {/* Floating Arrow Toggle Button */}
           <button 
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fafafa',
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-strong)',
+              color: 'var(--accent-blue)',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              position: 'absolute',
+              right: '-16px',
+              top: '12px',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               outline: 'none',
-              flexShrink: 0
+              zIndex: 60,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              padding: 0
             }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
+            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent-blue)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--accent-blue)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.transform = 'scale(1)'; }}
           >
-            <Menu size={18} />
+            {sidebarCollapsed ? <ChevronRight size={18} strokeWidth={3} /> : <ChevronLeft size={18} strokeWidth={3} />}
           </button>
-
-          {/* Brand Name - only when expanded */}
-          {!sidebarCollapsed && <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fafafa', letterSpacing: '-0.03em', whiteSpace: 'nowrap', marginLeft: '0.25rem' }}>WorkSphere</span>}
         </div>
 
-        {/* Active Employee Section */}
-        <div style={{ padding: '0 0.75rem 2rem 0.75rem', width: '100%' }}>
+        <div style={{ padding: '1rem 0.75rem', width: '100%' }}>
           <div style={{ 
-            background: '#18181b', 
-            borderRadius: '12px', 
-            padding: sidebarCollapsed ? '0.75rem 0' : '1rem',
-            border: '1px solid #27272a',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)', 
+            borderRadius: '16px', 
+            padding: sidebarCollapsed ? '0.75rem 0.25rem' : '1rem',
+            border: '1px solid var(--border-subtle)',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: sidebarCollapsed ? 'center' : 'flex-start',
+            gap: '0.75rem',
             overflow: 'hidden',
-            width: '100%'
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
           }}>
-            {!sidebarCollapsed && <div style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.75rem', width: '100%', padding: '0 1rem' }}>Active Employee</div>}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: '0.75rem', width: '100%', padding: sidebarCollapsed ? '0' : '0 1rem' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <User size={18} color="#a1a1aa" />
+            {!sidebarCollapsed && <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Active Session</div>}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: '0.75rem', width: '100%' }}>
+              <div style={{ 
+                width: '36px', 
+                height: '36px', 
+                borderRadius: '12px', 
+                background: 'var(--bg-tertiary)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                border: '1px solid var(--border-strong)',
+                flexShrink: 0
+              }}>
+                <User size={18} color="var(--accent-blue)" />
               </div>
               {!sidebarCollapsed && (
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{telemetry.employeeId}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{telemetry.email}</div>
+                <div style={{ overflow: 'hidden', flex: 1 }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{telemetry.employeeId}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }}>{telemetry.email}</div>
                 </div>
               )}
             </div>
@@ -440,12 +470,12 @@ export default function Dashboard() {
 
         {/* Navigation Section */}
         <nav style={{ flex: 1, padding: '0 0.75rem', width: '100%' }}>
-          <SidebarLink active={currentTab === 'Overview'} icon={<Monitor size={18} />} label={sidebarCollapsed ? "" : "Overview"} onClick={() => setCurrentTab('Overview')} collapsed={sidebarCollapsed} />
-          <SidebarLink active={currentTab === 'Activity'} icon={<Activity size={18} />} label={sidebarCollapsed ? "" : "Activity"} onClick={() => setCurrentTab('Activity')} collapsed={sidebarCollapsed} />
-          <SidebarLink active={currentTab === 'Analytics'} icon={<BarChart3 size={18} />} label={sidebarCollapsed ? "" : "Analytics"} onClick={() => setCurrentTab('Analytics')} collapsed={sidebarCollapsed} />
-          <SidebarLink active={currentTab === 'Live Tracking'} icon={<MapIcon size={18} color="#10b981" />} label={sidebarCollapsed ? "" : "Live Tracking"} onClick={() => setCurrentTab('Live Tracking')} collapsed={sidebarCollapsed} />
-          <SidebarLink active={currentTab === 'Reports'} icon={<FileText size={18} />} label={sidebarCollapsed ? "" : "Reports"} onClick={() => setCurrentTab('Reports')} collapsed={sidebarCollapsed} />
-          <SidebarLink active={currentTab === 'System Audit'} icon={<Shield size={18} color="#3b82f6" />} label={sidebarCollapsed ? "" : "System Audit"} onClick={() => setCurrentTab('System Audit')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Overview'} icon={<LayoutDashboard size={18} />} label={sidebarCollapsed ? "" : "Overview"} onClick={() => setCurrentTab('Overview')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Activity'} icon={<Radar size={18} />} label={sidebarCollapsed ? "" : "Activity"} onClick={() => setCurrentTab('Activity')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Analytics'} icon={<LineChart size={18} />} label={sidebarCollapsed ? "" : "Analytics"} onClick={() => setCurrentTab('Analytics')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Live Tracking'} icon={<Target size={18} />} label={sidebarCollapsed ? "" : "Live Tracking"} onClick={() => setCurrentTab('Live Tracking')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Reports'} icon={<FileSearch size={18} />} label={sidebarCollapsed ? "" : "Reports"} onClick={() => setCurrentTab('Reports')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'System Audit'} icon={<Fingerprint size={18} />} label={sidebarCollapsed ? "" : "System Audit"} onClick={() => setCurrentTab('System Audit')} collapsed={sidebarCollapsed} />
         </nav>
 
         {/* Footer Section */}
@@ -467,55 +497,60 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       <main style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        {/* Glossy Header */}
+        {/* Sleek Enterprise Header */}
         <header style={{ 
-          padding: '0 2rem', 
-          height: '60px',
-          minHeight: '60px',
-          borderBottom: '1px solid #27272a',
+          padding: '0 1.5rem', 
+          height: '56px',
+          minHeight: '56px',
+          borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(9, 9, 11, 0.8)',
+          background: 'var(--bg-glass)',
           backdropFilter: 'blur(12px)',
           position: 'sticky',
           top: 0,
-          zIndex: 50
+          zIndex: 40
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fafafa', letterSpacing: '-0.02em' }}>System Command Center</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.75rem', borderRadius: '100px', background: '#18181b', border: '1px solid #27272a' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, boxShadow: `0 0 8px ${statusColor}` }}></div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{statusText}</span>
-              <span style={{ fontSize: '0.75rem', color: '#71717a', marginLeft: '0.5rem', borderLeft: '1px solid #3f3f46', paddingLeft: '0.5rem' }}>ID: {telemetry.employeeId}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Command Center</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-secondary)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-strong)' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor, boxShadow: `0 0 8px ${statusColor}` }}></div>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{statusText}</span>
             </div>
+            <div style={{ height: '12px', width: '1px', background: 'var(--border-strong)' }}></div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {telemetry.employeeId}</span>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>
-                Login: {mounted ? new Date(telemetry.loginTime).toLocaleTimeString() : '--:--:--'}
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                Session: {mounted ? new Date(telemetry.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
               </div>
             </div>
+            <div style={{ position: 'relative', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
+               <Bell size={18} color="var(--text-secondary)" />
+               <div style={{ position: 'absolute', top: '0', right: '0', background: 'var(--accent-blue)', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-primary)' }}></div>
+            </div>
             <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '10px', 
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+              width: '28px', 
+              height: '28px', 
+              borderRadius: '50%', 
+              background: 'var(--bg-tertiary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '1.2rem',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              color: 'var(--text-primary)',
+              fontWeight: 500,
+              fontSize: '0.75rem',
+              border: '1px solid var(--border-strong)'
             }}>
               {mounted && telemetry.email ? telemetry.email[0].toUpperCase() : 'G'}
             </div>
           </div>
         </header>
 
-        <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+        <div style={{ padding: '2.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
           {currentTab === 'Overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {isStandby && (
@@ -548,119 +583,136 @@ export default function Dashboard() {
 
               {/* Active Status Card */}
               <div style={{ 
-                background: '#09090b',
-                borderRadius: '16px',
-                border: `1px solid ${isActive ? '#10b981' : (telemetry.isBreak ? '#f59e0b' : '#27272a')}`,
-                padding: '1.5rem',
+                background: 'var(--bg-secondary)',
+                borderRadius: '20px',
+                border: '1px solid var(--border-strong)',
+                padding: '2rem',
                 position: 'relative',
                 overflow: 'hidden',
-                transition: 'border 0.3s ease'
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                backgroundGradient: 'radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: statusColor }}>
-                    <Monitor size={20} />
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {telemetry.isBreak ? 'On Break' : (isActive ? 'Current Foreground' : 'System Idle')}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: statusColor }}>
+                    <Monitor size={18} />
+                    <span style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      {telemetry.isBreak ? 'On Break' : (isActive ? 'System Active' : 'System Idle')}
                     </span>
                   </div>
                   {isActive && (
                     <div style={{ 
-                      background: 'rgba(16, 185, 129, 0.1)', 
-                      padding: '0.5rem 1rem', 
-                      borderRadius: '8px',
-                      color: '#10b981',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      border: '1px solid rgba(16, 185, 129, 0.2)'
+                      background: 'rgba(0, 229, 143, 0.1)', 
+                      padding: '0.4rem 0.8rem', 
+                      borderRadius: '100px',
+                      color: 'var(--accent-green)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      border: '1px solid rgba(0, 229, 143, 0.2)',
+                      letterSpacing: '0.05em'
                     }}>
-                      TIME ON APP: {formatDuration(telemetry.latest.appDuration)}
+                      {formatDuration(telemetry.latest.appDuration).toUpperCase()}
                     </div>
                   )}
                 </div>
 
                 {isActive ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2.5rem' }}>
                     <div style={{ 
                       width: '80px', 
                       height: '80px', 
-                      background: '#18181b', 
-                      borderRadius: '16px', 
+                      background: 'var(--bg-tertiary)', 
+                      borderRadius: '20px', 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      border: '1px solid #27272a',
-                      color: '#10b981'
+                      border: '1px solid var(--border-strong)',
+                      color: 'var(--text-primary)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
                     }}>
-                      {getAppIcon(telemetry.latest.app, 40)}
+                      {getAppIcon(telemetry.latest.app, 48)}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#fafafa', margin: 0, lineHeight: 1.1, letterSpacing: '-0.04em' }}>
+                    <div style={{ flex: 1, paddingBottom: '0.5rem' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>Foreground Process</div>
+                      <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1, letterSpacing: '-0.03em' }}>
                         {telemetry.latest.app}
                       </h1>
-                      <p style={{ color: '#a1a1aa', fontSize: '1.1rem', marginTop: '0.5rem' }}>
-                        Tab/Window: <span style={{ color: '#e4e4e7' }}>{telemetry.latest.title}</span>
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '3rem', padding: '0 2rem', borderLeft: '1px solid #27272a' }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Input Velocity</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fafafa' }}>{telemetry.latest.keystrokeVelocity} <span style={{ fontSize: '0.75rem', color: '#71717a' }}>CPM</span></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)' }}></div>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500, margin: 0 }}>
+                          {telemetry.latest.title}
+                        </p>
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Interactions</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fafafa' }}>{telemetry.latest.mouseClicks} <span style={{ fontSize: '0.75rem', color: '#71717a' }}>s</span></div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '2.5rem', padding: '0.5rem 0', borderLeft: '1px solid var(--border-subtle)', paddingLeft: '2.5rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em', marginBottom: '0.6rem' }}>Keyboard</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                          {telemetry.latest.keystrokeVelocity} 
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CPM</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em', marginBottom: '0.6rem' }}>Mouse</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                          {telemetry.latest.mouseClicks}
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CLKS</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                    <div style={{ fontSize: '1.5rem', color: '#71717a', fontWeight: 500 }}>
-                      {telemetry.isBreak ? '☕ Taking a Break' : '🔒 Screen Locked / Idle'}
+                  <div style={{ textAlign: 'center', padding: '3rem 0' }}>
+                    <div style={{ fontSize: '1.5rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '-0.01em' }}>
+                      {telemetry.isBreak ? '☕ System on Break' : '🔒 System in Standby'}
                     </div>
-                    <p style={{ color: '#3f3f46', marginTop: '0.5rem' }}>System is currently waiting for activity...</p>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '0.75rem', fontSize: '0.95rem' }}>Awaiting user activity or next scheduled session...</p>
                   </div>
                 )}
 
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${statusColor}, transparent)` }}></div>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, transparent, ${statusColor}, transparent)`, opacity: 0.5 }}></div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 {/* App Usage List */}
-                <div style={{ background: '#09090b', borderRadius: '16px', border: '1px solid #27272a', padding: '1.5rem' }}>
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <Clock size={18} color="#a1a1aa" />
-                    <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fafafa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily App Usage</h3>
+                    <div style={{ padding: '0.4rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
+                      <Clock size={16} color="var(--accent-blue)" />
+                    </div>
+                    <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Daily App Usage</h3>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {Object.entries(telemetry.sessionStats).sort((a: any, b: any) => b[1] - a[1]).map(([app, sec]: any) => (
-                      <div key={app} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#18181b', borderRadius: '10px', border: '1px solid #27272a' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ color: '#71717a' }}>{getAppIcon(app, 18)}</div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{app}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {Object.entries(telemetry.sessionStats).sort((a: any, b: any) => b[1] - a[1]).slice(0, 6).map(([app, sec]: any) => (
+                      <div key={app} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ color: 'var(--text-muted)' }}>{getAppIcon(app, 16)}</div>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{app}</span>
                         </div>
-                        <span style={{ fontSize: '0.85rem', color: '#71717a', fontFamily: 'monospace' }}>{formatDuration(sec)}</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{formatDuration(sec)}</span>
                       </div>
                     ))}
-                    {Object.keys(telemetry.sessionStats).length === 0 && <div style={{ color: '#3f3f46', textAlign: 'center', padding: '1rem' }}>No apps tracked yet today.</div>}
+                    {Object.keys(telemetry.sessionStats).length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem', fontSize: '0.85rem' }}>No telemetry data.</div>}
                   </div>
                 </div>
 
                 {/* Event Feed */}
-                <div style={{ background: '#09090b', borderRadius: '16px', border: '1px solid #27272a', padding: '1.5rem' }}>
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <Layers size={18} color="#a1a1aa" />
-                    <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fafafa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent System Events</h3>
+                    <div style={{ padding: '0.4rem', background: 'rgba(20, 184, 166, 0.1)', borderRadius: '8px' }}>
+                      <Layers size={16} color="var(--accent-cyan)" />
+                    </div>
+                    <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recent System Events</h3>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {recentEvents.map((event: any, i: number) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {recentEvents.slice(0, 4).map((event: any, i: number) => (
                       <div key={i} style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ width: '2px', background: '#27272a', borderRadius: '1px' }}></div>
+                        <div style={{ width: '2px', background: 'var(--border-strong)', borderRadius: '1px' }}></div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#71717a' }}>{new Date(event.timestamp).toLocaleTimeString()}</span>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{event.eventType}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>{new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--accent-blue)', background: 'rgba(59, 130, 246, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{event.eventType}</span>
                           </div>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#e4e4e7' }}>{event.title}</div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</div>
                         </div>
                       </div>
                     ))}
@@ -671,16 +723,51 @@ export default function Dashboard() {
           )}
 
           {currentTab === 'Activity' && (
-            <div style={{ background: '#09090b', borderRadius: '16px', border: '1px solid #27272a', padding: '2rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '2rem' }}>Full Session Activity</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Audit Intelligence</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>Comprehensive real-time activity ledger and event sequencing.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {allEvents.map((ev: any, i: number) => (
-                  <div key={i} style={{ padding: '1rem', background: '#18181b', borderRadius: '10px', border: '1px solid #27272a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#3b82f6' }}>{ev.eventType}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#a1a1aa' }}>{ev.app} — {ev.title}</div>
+                  <div key={i} className="transition-premium" style={{ 
+                    padding: '1rem 1.5rem', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: '16px', 
+                    border: '1px solid var(--border-strong)', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                      <div style={{ 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '10px', 
+                        background: 'var(--bg-tertiary)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        color: 'var(--accent-blue)',
+                        border: '1px solid var(--border-subtle)'
+                      }}>
+                        {getAppIcon(ev.app, 20)}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ev.app}</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-blue)', background: 'rgba(59, 130, 246, 0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{ev.eventType}</span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{ev.title}</div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#71717a' }}>{new Date(ev.timestamp).toLocaleTimeString()}</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>{new Date(ev.timestamp).toLocaleTimeString([], { hour12: false })}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID: {ev.employeeId || 'USER'}</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -688,79 +775,90 @@ export default function Dashboard() {
           )}
 
           {currentTab === 'Analytics' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div style={{ background: '#09090b', borderRadius: '16px', border: '1px solid #27272a', padding: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '2rem' }}>Efficiency Metrics</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                  <div style={{ padding: '1.5rem', background: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }}>
-                    <div style={{ color: '#71717a', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Active Hours</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#10b981', marginTop: '0.5rem' }}>
-                      {formatDuration(Object.values(telemetry.sessionStats).reduce((a: any, b: any) => a + b, 0) as number)}
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                <div style={{ padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Utilization Rate</div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--accent-green)', marginTop: '0.5rem', letterSpacing: '-0.02em' }}>
+                    {formatDuration(Object.values(telemetry.sessionStats).reduce((a: any, b: any) => a + b, 0) as number)}
                   </div>
-                  <div style={{ padding: '1.5rem', background: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }}>
-                    <div style={{ color: '#71717a', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Peak Velocity</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fafafa', marginTop: '0.5rem' }}>
-                      {Math.max(...allEvents.map((e: any) => e.keystrokeVelocity || 0), 0)} <span style={{ fontSize: '1rem', color: '#71717a' }}>CPM</span>
-                    </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Active production time today</div>
+                </div>
+                <div style={{ padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Max Velocity</div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.5rem', letterSpacing: '-0.02em' }}>
+                    {Math.max(...allEvents.map((e: any) => e.keystrokeVelocity || 0), 0)} <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>CPM</span>
                   </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Peak input concentration</div>
+                </div>
+                <div style={{ padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Network Signals</div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--accent-blue)', marginTop: '0.5rem', letterSpacing: '-0.02em' }}>
+                    {telemetry.sessionStats ? Object.keys(telemetry.sessionStats).length : 0} <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>APPS</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Unique applications audited</div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-                <div style={{ background: '#09090b', borderRadius: '16px', border: '1px solid #27272a', padding: '2rem' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '2rem' }}>App Distribution (Time Spent)</h3>
-                  <div style={{ height: '500px' }}>
-                    <AppUsageChart stats={telemetry.sessionStats} />
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: '24px', border: '1px solid var(--border-strong)', padding: '2rem', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Efficiency Distribution</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Audit of time investment per application lifecycle.</p>
                   </div>
+                  <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    SESSION: LIVE
+                  </div>
+                </div>
+                <div style={{ height: '400px' }}>
+                  <AppUsageChart stats={telemetry.sessionStats} />
                 </div>
               </div>
             </div>
           )}          {currentTab === 'Live Tracking' && (
-            <div style={{ height: 'calc(100vh - 150px)', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ height: 'calc(100vh - 120px)', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fafafa', letterSpacing: '-0.02em' }}>Real-Time GPS Intelligence</h2>
-                  <p style={{ color: '#71717a', fontSize: '0.9rem' }}>Monitoring active devices and live movement patterns across the enterprise network.</p>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Signal Intelligence</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>Live GPS hardware telemetry and regional signal tracking.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ padding: '0.5rem 1rem', background: '#18181b', borderRadius: '8px', border: '1px solid #27272a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Navigation size={14} color="#10b981" />
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Active Signals: Live</span>
+                  <div style={{ padding: '0.6rem 1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-strong)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 10px var(--accent-green)' }}></div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>ENCRYPTED SIGNAL</span>
                   </div>
                 </div>
               </div>
-              <div style={{ flex: 1, minHeight: '500px' }}>
+              <div style={{ flex: 1, minHeight: '500px', borderRadius: '24px', overflow: 'hidden', border: '1px solid var(--border-strong)', boxShadow: '0 12px 48px rgba(0,0,0,0.5)' }}>
                 <LiveTrackingMap />
               </div>
             </div>
           )}
           {currentTab === 'Reports' && (
-            <div id="report-tab-view" style={{ minHeight: 'calc(100vh - 120px)', width: '100%', padding: '0 1rem' }}>
+            <div id="report-tab-view" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {/* Premium Report Header */}
               <div style={{ 
-                background: 'rgba(24, 24, 27, 0.8)', 
-                backdropFilter: 'blur(16px)',
+                background: 'var(--bg-secondary)', 
                 borderRadius: '24px', 
-                border: '1px solid rgba(255, 255, 255, 0.05)', 
-                padding: '2rem 2.5rem', 
-                marginBottom: '3rem', 
+                border: '1px solid var(--border-strong)', 
+                padding: '2rem', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                zIndex: 10,
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)'
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    <div style={{ padding: '6px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
-                      <FileText size={20} color="#3b82f6" />
+                <div style={{ zIndex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                    <div style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '10px' }}>
+                      <FileText size={20} color="var(--accent-blue)" />
                     </div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>Reporting Engine</h2>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Intelligence Reporting</h2>
                   </div>
-                  <p style={{ color: '#71717a', fontSize: '0.95rem', marginLeft: '2.75rem' }}>Enterprise-grade work evidence preview for <span style={{ color: '#3b82f6', fontWeight: 600 }}>{telemetry.employeeId}</span></p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginLeft: '3rem' }}>Verified work evidence and hardware telemetry for <span style={{ color: 'var(--accent-blue)', fontWeight: 700 }}>{telemetry.employeeId}</span></p>
                 </div>
-                <div style={{ display: 'flex', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', zIndex: 1 }}>
                   <button 
                     onClick={() => {
                       const csv = [
@@ -784,23 +882,22 @@ export default function Dashboard() {
                       a.click();
                       document.body.removeChild(a);
                     }}
+                    className="transition-premium"
                     style={{ 
-                      background: '#27272a', 
-                      color: '#fff', 
-                      border: '1px solid #3f3f46', 
-                      padding: '0.85rem 1.75rem', 
+                      background: 'transparent', 
+                      color: 'var(--text-primary)', 
+                      border: '1px solid var(--border-strong)', 
+                      padding: '0.75rem 1.5rem', 
                       borderRadius: '12px', 
                       cursor: 'pointer', 
-                      fontWeight: 600, 
+                      fontWeight: 700, 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: '0.75rem',
-                      transition: 'all 0.2s'
+                      gap: '0.6rem',
+                      fontSize: '0.85rem'
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#3f3f46'}
-                    onMouseOut={(e) => e.currentTarget.style.background = '#27272a'}
                   >
-                    <Download size={18} /> Export CSV
+                    <Download size={16} /> Export CSV
                   </button>
                   <button 
                     disabled={isGenerating}
@@ -815,10 +912,17 @@ export default function Dashboard() {
                         const stats = liveData.sessionStats || {};
                         const totalDuration = Object.values(stats).reduce((a: any, b: any) => a + Number(b), 0) as number;
 
+                        const sysRes = await fetch('http://localhost:4000/api/system/metrics');
+                        let systemMetrics = null;
+                        if (sysRes.ok) {
+                          systemMetrics = await sysRes.json();
+                        }
+
                         await generateEnterpriseReport({
                           ...liveData,
                           sessionStats: stats,
-                          totalDuration: totalDuration
+                          totalDuration: totalDuration,
+                          systemMetrics: systemMetrics
                         });
                         
                       } catch (err: any) {
@@ -827,25 +931,29 @@ export default function Dashboard() {
                         setIsGenerating(false);
                       }
                     }} 
+                    className="transition-premium"
                     style={{ 
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                      color: 'white', 
+                      background: 'var(--accent-green)', 
+                      color: 'black', 
                       border: 'none', 
-                      padding: '0.85rem 2.25rem', 
-                      borderRadius: '14px', 
+                      padding: '0.75rem 1.75rem', 
+                      borderRadius: '12px', 
                       cursor: isGenerating ? 'not-allowed' : 'pointer', 
                       fontWeight: 800, 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: '0.85rem',
-                      boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      gap: '0.6rem',
+                      fontSize: '0.85rem',
+                      boxShadow: '0 4px 12px rgba(0, 229, 143, 0.3)',
                       opacity: isGenerating ? 0.7 : 1
                     }}
                   >
-                    {isGenerating ? <Activity size={20} /> : <Download size={20} />} 
-                    {isGenerating ? 'PREPARING PDF...' : 'Download PDF Report'}
+                    {isGenerating ? <Activity size={18} className="animate-spin" /> : <Download size={18} />} 
+                    {isGenerating ? 'GENERATING...' : 'Download PDF'}
                   </button>
+                </div>
+                <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.05 }}>
+                   <BarChart3 size={180} />
                 </div>
               </div>
 
@@ -854,12 +962,14 @@ export default function Dashboard() {
                 display: 'flex', 
                 justifyContent: 'center', 
                 padding: '4rem 2rem',
-                background: '#0c0c0e',
+                background: 'var(--bg-primary)',
                 borderRadius: '32px',
-                border: '1px solid #18181b',
+                border: '1px solid var(--border-strong)',
                 boxShadow: 'inset 0 0 100px rgba(0,0,0,0.5)',
-                marginBottom: '4rem'
+                marginBottom: '4rem',
+                position: 'relative'
               }}>
+                <div style={{ position: 'absolute', top: '1rem', left: '2rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>DOCUMENT PREVIEW</div>
                 <div id="printable-report" style={{ 
                   background: 'white', 
                   color: '#0f172a', 
@@ -989,49 +1099,53 @@ function SidebarLink({ icon, label, active = false, onClick, collapsed = false }
   return (
     <div 
       onClick={onClick}
+      className="transition-premium"
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: collapsed ? 'center' : 'flex-start',
-        gap: collapsed ? '0' : '0.75rem', 
-        padding: '0.85rem 1rem', 
-        borderRadius: '10px', 
+        gap: collapsed ? '0' : '1rem', 
+        padding: collapsed ? '0.75rem 0' : '0.75rem 1rem', 
+        borderRadius: '12px', 
         cursor: 'pointer',
-        backgroundColor: active ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-        color: active ? '#10b981' : '#a1a1aa',
-        marginBottom: '0.25rem',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid transparent',
-        position: 'relative'
+        backgroundColor: active ? 'rgba(31, 111, 235, 0.1)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        marginBottom: '0.4rem',
+        position: 'relative',
+        overflow: 'hidden',
+        border: active ? '1px solid rgba(31, 111, 235, 0.3)' : '1px solid transparent',
+        fontWeight: active ? 700 : 500,
+        fontSize: '0.9rem'
       }}
       onMouseOver={(e) => {
         if (!active) {
-          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-          e.currentTarget.style.color = '#fafafa';
+          e.currentTarget.style.color = 'var(--text-primary)';
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
         }
       }}
       onMouseOut={(e) => {
         if (!active) {
+          e.currentTarget.style.color = 'var(--text-secondary)';
           e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = '#a1a1aa';
         }
       }}
     >
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
-      </div>
-      {!collapsed && <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{label}</span>}
-      {active && !collapsed && (
+      {active && (
         <div style={{ 
           position: 'absolute', 
-          right: '12px', 
+          left: 0, 
+          top: '20%', 
+          bottom: '20%', 
           width: '4px', 
-          height: '4px', 
-          borderRadius: '50%', 
-          backgroundColor: '#10b981',
-          boxShadow: '0 0 10px #10b981'
-        }} />
+          background: 'var(--accent-blue)', 
+          borderRadius: '0 8px 8px 0', 
+          boxShadow: '0 0 15px var(--accent-blue)' 
+        }}></div>
       )}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: active ? 'var(--text-primary)' : 'inherit' }}>
+        {React.cloneElement(icon as React.ReactElement, { size: 20 })}
+      </div>
+      {!collapsed && <span style={{ fontSize: '0.9rem', fontWeight: active ? 800 : 600, letterSpacing: '0.01em' }}>{label}</span>}
     </div>
   );
 }

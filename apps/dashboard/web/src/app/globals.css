@@ -3,42 +3,68 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0c0c0c;
-  --card: #ffffff;
-  --card-foreground: #0c0c0c;
-  --border: #e5e5e5;
-  --muted: #6b6b6b;
-  --success: #16a34a;
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-tertiary: #21262D;
+  --bg-glass: rgba(22, 27, 34, 0.8);
+  
+  --border-subtle: rgba(48, 54, 61, 0.5);
+  --border-strong: #30363D;
+  
+  --text-primary: #F0F6FC;
+  --text-secondary: #8B949E;
+  --text-muted: #484F58;
+  
+  --accent-green: #238636;
+  --accent-blue: #1F6FEB;
+  --accent-cyan: #3FB950;
+  --accent-purple: #8957E5;
+  --status-danger: #F85149;
+  --status-warning: #D29922;
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0c0c0c;
-    --foreground: #ffffff;
-    --card: #1a1a1a;
-    --card-foreground: #ffffff;
-    --border: #2d2d2d;
-    --muted: #a1a1aa;
+    --background: var(--bg-primary);
+    --foreground: var(--text-primary);
   }
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-strong);
 }
 
 .chart-container {
   position: relative;
   height: 300px;
   width: 100%;
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom transitions */
+.transition-premium {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* LiveGuard Pro Map Styles */
@@ -70,20 +96,18 @@ body {
 }
 
 .leaflet-popup-content-wrapper {
-  background: #09090b !important;
-  color: #fafafa !important;
-  border-radius: 16px !important;
-  border: 1px solid #27272a !important;
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-strong) !important;
   box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
 }
 
 .leaflet-popup-tip {
-  background: #09090b !important;
-  border: 1px solid #27272a !important;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-strong) !important;
 }
 
 .leaflet-container {
-  background: #09090b !important;
+  background: var(--bg-primary) !important;
 }
-

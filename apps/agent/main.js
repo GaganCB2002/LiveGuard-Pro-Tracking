@@ -328,6 +328,37 @@ app.on('before-quit', () => {
 
 app.whenReady().then(() => {
     createTray();
+    
+    // Create the main dashboard window
+    const mainWindow = new BrowserWindow({
+        width: 1400,
+        height: 900,
+        title: "WorkSphere Command Center",
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false // Remove browser restrictions
+        }
+    });
+
+    // Remove menu bar for a cleaner UI
+    mainWindow.setMenuBarVisibility(false);
+    
+    // Allow opening any URL or browser within this application
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        require('electron').shell.openExternal(url);
+        return { action: 'deny' };
+    });
+
+    // Load the local dashboard
+    // Polling until the dashboard is up
+    const loadDashboard = () => {
+        mainWindow.loadURL('http://localhost:3000').catch(() => {
+            setTimeout(loadDashboard, 2000);
+        });
+    };
+    loadDashboard();
+
     startMonitoring();
     startGPSPolling();
 });
