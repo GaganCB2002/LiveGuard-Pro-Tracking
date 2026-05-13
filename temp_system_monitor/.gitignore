@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+ENV/
+*.pdf
+temp_chart.png
+system_guardian.log
+.DS_Store
+.vscode/
+.idea/

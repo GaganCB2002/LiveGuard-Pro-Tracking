@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  system-guardian:
+    build:
+      context: ..
+      dockerfile: part4_integration_config/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../part1_backend_core:/app/part1_backend_core
+      - ../part2_ai_agent:/app/part2_ai_agent
+      - ../part3_frontend_dashboard:/app/part3_frontend_dashboard
+      - ../part4_integration_config:/app/part4_integration_config
+    restart: unless-stopped
+    networks:
+      - guardian-network
+
+  # Optional: Redis for scaling
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - guardian-network
+
+networks:
+  guardian-network:
+    driver: bridge

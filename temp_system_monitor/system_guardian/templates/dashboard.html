@@ -1,0 +1,3172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Guardian | Runtime Telemetry Dashboard</title>
+    <style>
+        :root {
+            color-scheme: dark light;
+            --bg: #07111f;
+            --bg-elevated: rgba(12, 24, 39, 0.86);
+            --bg-panel: rgba(9, 18, 30, 0.92);
+            --bg-soft: rgba(255, 255, 255, 0.04);
+            --text: #e8eef8;
+            --text-soft: #9eb0c8;
+            --text-muted: #71839a;
+            --line: rgba(139, 167, 201, 0.18);
+            --green: #46d39a;
+            --yellow: #f3c969;
+            --red: #ff6d7a;
+            --blue: #5ab2ff;
+            --cyan: #78e6ff;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+            --radius: 22px;
+            --gauge: var(--green);
+            --hero: radial-gradient(circle at top left, rgba(90, 178, 255, 0.28), transparent 38%), radial-gradient(circle at top right, rgba(120, 230, 255, 0.18), transparent 30%), linear-gradient(135deg, rgba(11, 22, 37, 0.95), rgba(5, 12, 21, 0.9));
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg: #eef4fb;
+                --bg-elevated: rgba(255, 255, 255, 0.88);
+                --bg-panel: rgba(255, 255, 255, 0.95);
+                --bg-soft: rgba(7, 17, 31, 0.04);
+                --text: #102136;
+                --text-soft: #3e5572;
+                --text-muted: #5d7089;
+                --line: rgba(16, 33, 54, 0.1);
+                --shadow: 0 20px 48px rgba(32, 63, 96, 0.1);
+                --hero: radial-gradient(circle at top left, rgba(90, 178, 255, 0.22), transparent 40%), radial-gradient(circle at top right, rgba(120, 230, 255, 0.14), transparent 30%), linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 255, 0.92));
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: "Segoe UI", "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(90, 178, 255, 0.16), transparent 34%),
+                radial-gradient(circle at 82% 12%, rgba(120, 230, 255, 0.12), transparent 20%),
+                var(--bg);
+            color: var(--text);
+            line-height: 1.45;
+        }
+
+        .shell {
+            width: min(1480px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 24px 0 40px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-mark {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(90, 178, 255, 0.92), rgba(120, 230, 255, 0.66));
+            box-shadow: 0 18px 36px rgba(90, 178, 255, 0.25);
+            display: grid;
+            place-items: center;
+            color: #04111e;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .brand h1 {
+            font-size: clamp(1.8rem, 2vw, 2.6rem);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .brand p,
+        .top-meta,
+        .meta-note,
+        .metric-sub,
+        .detail-copy,
+        .api-copy,
+        .timeline-copy {
+            color: var(--text-soft);
+        }
+
+        .top-meta {
+            display: grid;
+            gap: 6px;
+            justify-items: end;
+            text-align: right;
+        }
+
+        .clock {
+            font-size: clamp(1.5rem, 2vw, 2.3rem);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .date-line {
+            font-size: 0.95rem;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .panel,
+        .card {
+            border: 1px solid var(--line);
+            background: var(--bg-elevated);
+            backdrop-filter: blur(18px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .hero-main {
+            background: var(--hero);
+            padding: 28px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 0 6px rgba(120, 230, 255, 0.12);
+        }
+
+        .hero-main h2 {
+            font-size: clamp(1.8rem, 2.3vw, 3rem);
+            line-height: 1.05;
+            max-width: 12ch;
+        }
+
+        .hero-copy {
+            max-width: 62ch;
+            color: var(--text-soft);
+            font-size: 1rem;
+        }
+
+        .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .summary-pill {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .summary-label {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 1.18rem;
+            font-weight: 700;
+        }
+
+        .hero-side {
+            padding: 24px;
+            display: grid;
+            gap: 20px;
+            align-content: start;
+        }
+
+        .score-wrap {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .score-gauge {
+            width: 144px;
+            height: 144px;
+            border-radius: 50%;
+            background: conic-gradient(var(--gauge) calc(var(--score, 0) * 1%), rgba(255, 255, 255, 0.09) 0);
+            display: grid;
+            place-items: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .score-gauge::after {
+            content: "";
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            border: 1px solid var(--line);
+            position: absolute;
+        }
+
+        .score-inner {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            justify-items: center;
+            gap: 2px;
+        }
+
+        .score-value {
+            font-size: 2.4rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+        }
+
+        .status-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: rgba(70, 211, 154, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(70, 211, 154, 0.16);
+        }
+
+        .status-badge::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-readout {
+            display: grid;
+            gap: 6px;
+        }
+
+        .status-readout strong {
+            font-size: 1.08rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .card {
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+            min-height: 210px;
+        }
+
+        .card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 14px;
+        }
+
+        .card-title {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .metric {
+            font-size: clamp(1.6rem, 2vw, 2.5rem);
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: var(--bg-soft);
+            color: var(--text-soft);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .metric-sub {
+            font-size: 0.92rem;
+            min-height: 2.75em;
+        }
+
+        .gauge-shell {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            width: 0;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--green), var(--yellow), var(--red));
+            transition: width 0.35s ease;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .mini-stat {
+            padding: 12px;
+            border-radius: 16px;
+            background: var(--bg-soft);
+        }
+
+        .mini-stat dt {
+            color: var(--text-muted);
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .mini-stat dd {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .stack {
+            display: grid;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .wide {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+            gap: 18px;
+        }
+
+        .timeline-card,
+        .details-card,
+        .support-card {
+            padding: 22px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .timeline-card canvas {
+            width: 100%;
+            height: 200px;
+            display: block;
+            border-radius: 18px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 58%),
+                var(--bg-soft);
+            margin-top: 16px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            color: var(--text-soft);
+            font-size: 0.86rem;
+        }
+
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend span::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .detail-grid,
+        .support-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .detail-box,
+        .support-box {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: var(--bg-soft);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .detail-label,
+        .support-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 8px;
+        }
+
+        .detail-value,
+        .support-value {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .support-value {
+            margin-bottom: 6px;
+        }
+
+        .support-copy {
+            color: var(--text-soft);
+            font-size: 0.86rem;
+        }
+
+        .warning {
+            color: var(--yellow);
+        }
+
+        .critical {
+            color: var(--red);
+        }
+
+        .healthy {
+            color: var(--green);
+        }
+
+        .muted {
+            color: var(--text-soft);
+        }
+
+        @media (max-width: 1180px) {
+            .hero,
+            .wide {
+                grid-template-columns: 1fr;
+            }
+
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 720px) {
+            .shell {
+                width: min(100% - 18px, 1480px);
+                padding-top: 18px;
+            }
+
+            .top-meta {
+                justify-items: start;
+                text-align: left;
+            }
+
+            .summary-strip,
+            .grid,
+            .detail-grid,
+            .support-grid,
+            .mini-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-main,
+            .hero-side,
+            .card,
+            .timeline-card,
+            .details-card,
+            .support-card {
+                padding: 18px;
+            }
+        }
+
+        .report-workspace {
+            margin-bottom: 22px;
+            overflow: hidden;
+        }
+
+        .report-controls {
+            padding: 22px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .report-control-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: end;
+        }
+
+        .report-profile {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .input-field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .input-field span,
+        .period-block span {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .input-field input {
+            width: 100%;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: var(--bg-soft);
+            color: var(--text);
+            padding: 12px 14px;
+            font: inherit;
+        }
+
+        .period-block {
+            display: grid;
+            gap: 10px;
+        }
+
+        .period-row,
+        .action-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .period-button,
+        .action-button {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--bg-soft);
+            color: var(--text-soft);
+            padding: 11px 16px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .period-button:hover,
+        .period-button.active,
+        .action-button:hover {
+            color: var(--text);
+            border-color: rgba(90, 178, 255, 0.42);
+            transform: translateY(-1px);
+        }
+
+        .period-button.active {
+            background: rgba(90, 178, 255, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(90, 178, 255, 0.2);
+        }
+
+        .action-button.primary {
+            background: rgba(70, 211, 154, 0.16);
+            color: var(--green);
+            border-color: rgba(70, 211, 154, 0.3);
+        }
+
+        .action-button.secondary {
+            background: rgba(90, 178, 255, 0.14);
+            color: var(--blue);
+            border-color: rgba(90, 178, 255, 0.3);
+        }
+
+        .report-note {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: var(--bg-soft);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-soft);
+            font-size: 0.92rem;
+        }
+
+        .report-preview-shell {
+            display: none;
+            padding: 0 22px 26px;
+        }
+
+        .report-preview-shell.visible {
+            display: block;
+        }
+
+        .report-preview {
+            background: #ffffff;
+            color: #0f1720;
+            border: 1px solid #d7e1ea;
+            border-radius: 24px;
+            box-shadow: 0 22px 56px rgba(10, 19, 30, 0.16);
+            overflow: hidden;
+            min-height: 220px;
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .report-placeholder {
+            padding: 34px 28px;
+            color: #475569;
+            font-size: 0.98rem;
+        }
+
+        .audit-sheet {
+            padding: 32px;
+            background: #ffffff;
+            color: #111827;
+        }
+
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: start;
+            margin-bottom: 18px;
+            border: 2px solid #111827;
+            padding: 18px 20px;
+        }
+
+        .audit-title {
+            color: #0f9d58;
+            font-size: 1.8rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .audit-subtitle,
+        .audit-footnote,
+        .audit-note-text {
+            color: #334155;
+            font-size: 0.92rem;
+        }
+
+        .audit-meta {
+            min-width: 260px;
+            border: 1px solid #111827;
+            padding: 12px 14px;
+            font-size: 0.88rem;
+        }
+
+        .audit-meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid #dbe4ee;
+        }
+
+        .audit-meta-row:last-child {
+            border-bottom: none;
+        }
+
+        .audit-callout {
+            margin-bottom: 16px;
+            border: 1px solid #111827;
+            padding: 12px 14px;
+            background: #f8fafc;
+            font-size: 0.9rem;
+        }
+
+        .audit-section {
+            margin-bottom: 18px;
+            break-inside: auto;
+            page-break-inside: auto;
+        }
+
+        .audit-section-title {
+            background: #f1f5f9;
+            border: 2px solid #111827;
+            border-bottom: none;
+            padding: 10px 12px;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
+        .audit-table th,
+        .audit-table td {
+            border: 1px solid #111827;
+            padding: 8px 10px;
+            vertical-align: top;
+            text-align: left;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .audit-table th {
+            background: #f8fafc;
+            font-weight: 800;
+        }
+
+        .mono {
+            font-family: "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+        }
+
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .audit-box {
+            border: 1px solid #111827;
+            padding: 12px;
+            background: #ffffff;
+        }
+
+        .audit-box-title {
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .audit-donut-wrap {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .audit-donut {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            position: relative;
+            display: grid;
+            place-items: center;
+            background: conic-gradient(var(--fill, #0f9d58) calc(var(--percent, 0) * 1%), #e5e7eb 0);
+            border: 1px solid #111827;
+        }
+
+        .audit-donut::after {
+            content: "";
+            position: absolute;
+            width: 106px;
+            height: 106px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #d7e1ea;
+        }
+
+        .audit-donut-inner {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+        }
+
+        .audit-donut-value {
+            font-size: 1.55rem;
+            font-weight: 800;
+        }
+
+        .audit-donut-label {
+            font-size: 0.78rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .audit-score {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid #111827;
+            font-weight: 800;
+        }
+
+        .audit-score.excellent {
+            color: #0f9d58;
+            background: #ecfdf3;
+        }
+
+        .audit-score.good {
+            color: #b7791f;
+            background: #fff8e7;
+        }
+
+        .audit-score.critical {
+            color: #c62828;
+            background: #fff1f2;
+        }
+
+        .audit-footer {
+            margin-top: 20px;
+            border: 2px solid #111827;
+            padding: 12px 14px;
+            font-size: 0.85rem;
+            color: #334155;
+        }
+
+        @media (max-width: 980px) {
+            .report-control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .report-profile,
+            .audit-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .audit-header {
+                flex-direction: column;
+            }
+
+            .audit-meta {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .audit-sheet {
+                padding: 22px;
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 12mm;
+            }
+
+            body {
+                background: #ffffff !important;
+                color: #111827 !important;
+            }
+
+            .shell {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            .topbar,
+            .hero,
+            .grid,
+            .wide,
+            .stack,
+            .report-controls {
+                display: none !important;
+            }
+
+            .report-workspace {
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: #ffffff !important;
+            }
+
+            .report-preview-shell {
+                display: block !important;
+                padding: 0 !important;
+            }
+
+            .report-preview {
+                border: none !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                min-height: auto !important;
+            }
+
+            .audit-sheet {
+                padding: 0 !important;
+            }
+
+            .audit-section {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+                margin-bottom: 10px !important;
+            }
+
+            .audit-section-title,
+            .audit-callout,
+            .audit-header,
+            .audit-footer {
+                page-break-after: avoid !important;
+            }
+
+            .audit-table {
+                width: 100% !important;
+            }
+
+            .audit-table thead {
+                display: table-header-group;
+            }
+
+            .audit-table tr,
+            .audit-table td,
+            .audit-table th,
+            .audit-box {
+                page-break-inside: avoid;
+            }
+
+            .audit-sheet,
+            .audit-table th,
+            .audit-table td,
+            .audit-note-text,
+            .audit-subtitle,
+            .audit-footnote {
+                font-size: 11px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">SG</div>
+                <div>
+                    <h1>System Guardian</h1>
+                    <p>Real-time browser telemetry measured directly from this device and runtime.</p>
+                </div>
+            </div>
+            <div class="top-meta">
+                <div class="clock" id="clock">00:00:00</div>
+                <div class="date-line" id="dateLine">Loading local time...</div>
+                <div class="meta-note" id="sessionTimer">Session: 00:00:00</div>
+            </div>
+        </header>
+
+        <section class="hero">
+            <article class="panel hero-main">
+                <div class="eyebrow">Runtime Intelligence</div>
+                <h2>Live system pulse from native browser APIs.</h2>
+                <p class="hero-copy" id="heroCopy">
+                    Measuring CPU pressure, frame pacing, long tasks, heap pressure, network latency, and battery behavior with live sampling every 2 seconds.
+                </p>
+                <div class="summary-strip">
+                    <div class="summary-pill">
+                        <div class="summary-label">CPU Load</div>
+                        <div class="summary-value" id="summaryCpu">Warming up...</div>
+                    </div>
+                    <div class="summary-pill">
+                        <div class="summary-label">FPS</div>
+                        <div class="summary-value" id="summaryFps">--</div>
+                    </div>
+                    <div class="summary-pill">
+                        <div class="summary-label">Ping</div>
+                        <div class="summary-value" id="summaryPing">Checking...</div>
+                    </div>
+                    <div class="summary-pill">
+                        <div class="summary-label">Memory</div>
+                        <div class="summary-value" id="summaryMemory">Scanning...</div>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="panel hero-side">
+                <div class="score-wrap">
+                    <div class="score-gauge" id="healthGauge" style="--score: 100; --gauge: var(--green);">
+                        <div class="score-inner">
+                            <div class="score-value" id="healthScore">100</div>
+                            <div class="score-label">Health</div>
+                        </div>
+                    </div>
+                    <div class="status-stack">
+                        <span class="status-badge" id="healthBadge">Stable</span>
+                        <div class="status-readout">
+                            <strong id="healthHeadline">System is smooth and responsive.</strong>
+                            <span class="detail-copy" id="healthDetail">Health score factors in FPS, lag score, memory pressure, CPU load, and long tasks.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Timezone</dt>
+                        <dd id="timezoneValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Platform</dt>
+                        <dd id="platformValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Screen</dt>
+                        <dd id="screenValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Browser Cores</dt>
+                        <dd id="coresValue">--</dd>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">CPU Speed / Load</div>
+                        <div class="metric" id="cpuLoadMetric">Warming...</div>
+                    </div>
+                    <span class="pill" id="cpuLoadBadge">Benchmarking</span>
+                </div>
+                <p class="metric-sub" id="cpuLoadDetail">Worker benchmark is collecting a live baseline from this browser.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="cpuLoadBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Ops / sec</dt>
+                        <dd id="cpuOpsValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Baseline</dt>
+                        <dd id="cpuBaselineValue">--</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">FPS Counter</div>
+                        <div class="metric" id="fpsMetric">--</div>
+                    </div>
+                    <span class="pill" id="fpsBadge">Sampling</span>
+                </div>
+                <p class="metric-sub" id="fpsDetail">Actual frame rate from requestAnimationFrame timestamps.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="fpsBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Target</dt>
+                        <dd>60 fps</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Worst Delta</dt>
+                        <dd id="worstDeltaValue">--</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Lag / Jank</div>
+                        <div class="metric" id="lagMetric">0</div>
+                    </div>
+                    <span class="pill" id="lagBadge">Smooth</span>
+                </div>
+                <p class="metric-sub" id="lagDetail">Lag score is based on dropped frames over the last minute.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="lagBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Jank / min</dt>
+                        <dd id="jankRateValue">0</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Latest Event</dt>
+                        <dd id="jankEventValue">None</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Memory Pressure</div>
+                        <div class="metric" id="memoryMetric">Scanning...</div>
+                    </div>
+                    <span class="pill" id="memoryBadge">Pending</span>
+                </div>
+                <p class="metric-sub" id="memoryDetail">Using performance.memory when available, plus memory pressure signals if the browser exposes them.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="memoryBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Used Heap</dt>
+                        <dd id="heapUsedValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Heap Limit</dt>
+                        <dd id="heapLimitValue">--</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Network Ping</div>
+                        <div class="metric" id="pingMetric">Checking...</div>
+                    </div>
+                    <span class="pill" id="pingBadge">Polling</span>
+                </div>
+                <p class="metric-sub" id="pingDetail">Fetching a tiny same-origin resource every 5 seconds to estimate round-trip latency.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="pingBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Last Sample</dt>
+                        <dd id="pingSampleValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Transport</dt>
+                        <dd id="pingTransportValue">HEAD fetch</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Long Tasks</div>
+                        <div class="metric" id="longTaskMetric">0 / min</div>
+                    </div>
+                    <span class="pill" id="longTaskBadge">Watching</span>
+                </div>
+                <p class="metric-sub" id="longTaskDetail">PerformanceObserver is tracking blocking tasks longer than 50ms.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="longTaskBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Blocked Time</dt>
+                        <dd id="blockedTimeValue">0 ms</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Worst Task</dt>
+                        <dd id="worstLongTaskValue">--</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Battery Drain</div>
+                        <div class="metric" id="batteryMetric">Loading...</div>
+                    </div>
+                    <span class="pill" id="batteryBadge">Battery API</span>
+                </div>
+                <p class="metric-sub" id="batteryDetail">Tracking battery percentage changes over time to estimate drain in percent per hour.</p>
+                <div class="gauge-shell"><div class="gauge-fill" id="batteryBar"></div></div>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Level</dt>
+                        <dd id="batteryLevelValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Status</dt>
+                        <dd id="batteryStatusValue">--</dd>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">Device Overview</div>
+                        <div class="metric" id="overviewMetric">Live</div>
+                    </div>
+                    <span class="pill" id="overviewBadge">Runtime</span>
+                </div>
+                <p class="metric-sub" id="overviewDetail">Screen, timezone, platform, session timer, and feature support are all kept current in this client.</p>
+                <div class="mini-grid">
+                    <div class="mini-stat">
+                        <dt>Orientation</dt>
+                        <dd id="orientationValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Memory API</dt>
+                        <dd id="memoryApiValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Long Tasks API</dt>
+                        <dd id="longTaskApiValue">--</dd>
+                    </div>
+                    <div class="mini-stat">
+                        <dt>Battery API</dt>
+                        <dd id="batteryApiValue">--</dd>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="panel report-workspace" id="reportWorkspace">
+            <div class="report-controls">
+                <div class="section-title">Report Generation & Download</div>
+                <p class="api-copy">Build a professional audit from real browser telemetry history stored locally every 2 minutes, then print it as a PDF or export it as CSV.</p>
+                <div class="report-control-grid">
+                    <div class="report-profile">
+                        <label class="input-field">
+                            <span>Name</span>
+                            <input id="reportName" type="text" placeholder="Enter employee or account name">
+                        </label>
+                        <label class="input-field">
+                            <span>Email</span>
+                            <input id="reportEmail" type="email" placeholder="Enter report email">
+                        </label>
+                    </div>
+                    <div class="period-block">
+                        <span>Report Period</span>
+                        <div class="period-row">
+                            <button class="period-button active" data-period="day" type="button">Today</button>
+                            <button class="period-button" data-period="week" type="button">This Week</button>
+                            <button class="period-button" data-period="month" type="button">This Month</button>
+                            <button class="period-button" data-period="year" type="button">This Year</button>
+                        </div>
+                    </div>
+                    <div class="action-row">
+                        <button class="action-button secondary" id="previewReportButton" type="button">Preview Report</button>
+                        <button class="action-button primary" id="downloadPdfButton" type="button">Generate &amp; Download PDF</button>
+                        <button class="action-button" id="downloadCsvButton" type="button">Download CSV FILE</button>
+                    </div>
+                </div>
+                <div class="report-note" id="reportNotice">The preview will use stored history when available and fall back to the current live snapshot if the selected period has limited data.</div>
+            </div>
+            <div class="report-preview-shell" id="reportPreviewShell" aria-hidden="true">
+                <div class="report-preview" id="reportPreview">
+                    <div class="report-placeholder">Generate a report to preview the professional audit sheet before downloading.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="wide">
+            <article class="panel timeline-card">
+                <div class="section-title">Telemetry Sparkline</div>
+                <p class="timeline-copy">The line tracks runtime smoothness over time. Red markers show intervals where jank was detected.</p>
+                <canvas id="telemetryCanvas" width="1100" height="220" aria-label="Telemetry sparkline"></canvas>
+                <div class="legend">
+                    <span style="color: var(--blue);">Frame smoothness</span>
+                    <span style="color: var(--red);">Jank spikes</span>
+                </div>
+            </article>
+
+            <article class="panel details-card">
+                <div class="section-title">System Snapshot</div>
+                <p class="detail-copy">These values come from the current browser session and device capabilities, with fallbacks when an API is unavailable.</p>
+                <div class="detail-grid">
+                    <div class="detail-box">
+                        <div class="detail-label">Session Uptime</div>
+                        <div class="detail-value" id="detailSession">00:00:00</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Timezone</div>
+                        <div class="detail-value" id="detailTimezone">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Platform</div>
+                        <div class="detail-value" id="detailPlatform">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Screen Resolution</div>
+                        <div class="detail-value" id="detailScreen">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Pixel Ratio</div>
+                        <div class="detail-value" id="detailPixelRatio">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Hardware Concurrency</div>
+                        <div class="detail-value" id="detailCores">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Battery Charging</div>
+                        <div class="detail-value" id="detailCharging">--</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Refresh Loop</div>
+                        <div class="detail-value">Every 2 seconds</div>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="stack">
+            <article class="panel support-card">
+                <div class="section-title">API Support Matrix</div>
+                <p class="api-copy">Every unsupported metric is surfaced explicitly instead of being simulated.</p>
+                <div class="support-grid">
+                    <div class="support-box">
+                        <div class="support-label">CPU Worker Benchmark</div>
+                        <div class="support-value" id="supportWorker">Checking...</div>
+                        <div class="support-copy" id="supportWorkerCopy">Requires Web Workers and Blob URLs.</div>
+                    </div>
+                    <div class="support-box">
+                        <div class="support-label">performance.memory</div>
+                        <div class="support-value" id="supportMemory">Checking...</div>
+                        <div class="support-copy" id="supportMemoryCopy">Chrome-family browsers expose JS heap usage here.</div>
+                    </div>
+                    <div class="support-box">
+                        <div class="support-label">Memory Pressure Signal</div>
+                        <div class="support-value" id="supportPressure">Checking...</div>
+                        <div class="support-copy" id="supportPressureCopy">Listens for native memory pressure events if the browser implements them.</div>
+                    </div>
+                    <div class="support-box">
+                        <div class="support-label">Long Tasks Observer</div>
+                        <div class="support-value" id="supportLongTask">Checking...</div>
+                        <div class="support-copy" id="supportLongTaskCopy">Uses PerformanceObserver for entry type longtask.</div>
+                    </div>
+                    <div class="support-box">
+                        <div class="support-label">Battery Status</div>
+                        <div class="support-value" id="supportBattery">Checking...</div>
+                        <div class="support-copy" id="supportBatteryCopy">Uses navigator.getBattery when available.</div>
+                    </div>
+                    <div class="support-box">
+                        <div class="support-label">Network Ping</div>
+                        <div class="support-value" id="supportPing">Checking...</div>
+                        <div class="support-copy" id="supportPingCopy">Same-origin fetch polling is used when this page runs over HTTP or HTTPS.</div>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </div>
+
+    <script>
+        const REFRESH_MS = 2000;
+        const PING_MS = 5000;
+        const SNAPSHOT_MS = 120000;
+        const JANK_THRESHOLD_MS = 50;
+        const IDEAL_FRAME_MS = 1000 / 60;
+        const HISTORY_LIMIT = 60;
+        const MAX_SNAPSHOTS = 500;
+        const startTime = performance.now();
+
+        const STORAGE_KEYS = {
+            snapshots: "sg_snapshots",
+            events: "sg_events",
+            lifetimeMinutes: "sg_lifetime",
+            profile: "sg_profile"
+        };
+
+        const REPORT_PERIODS = {
+            day: { label: "Today", ms: 24 * 60 * 60 * 1000, breakdownLabel: "Hourly" },
+            week: { label: "This Week", ms: 7 * 24 * 60 * 60 * 1000, breakdownLabel: "Daily" },
+            month: { label: "This Month", ms: 30 * 24 * 60 * 60 * 1000, breakdownLabel: "Weekly" },
+            year: { label: "This Year", ms: 365 * 24 * 60 * 60 * 1000, breakdownLabel: "Monthly" }
+        };
+
+        const state = {
+            sessionId: `sg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            cpu: {
+                supported: typeof Worker !== "undefined" && typeof Blob !== "undefined" && typeof URL !== "undefined",
+                worker: null,
+                opsPerSecond: null,
+                baselineOpsPerSecond: null,
+                loadPercent: null,
+                samples: 0
+            },
+            frames: {
+                deltas: [],
+                fps: null,
+                worstDelta: null,
+                jankEvents: [],
+                lastJankDelta: null,
+                totalJank: 0,
+                startedAt: performance.now()
+            },
+            longTasks: {
+                supported: false,
+                entries: [],
+                worst: null,
+                totalCount: 0,
+                totalBlocked: 0
+            },
+            memory: {
+                supported: !!(performance && performance.memory),
+                pressureSupported: false,
+                usedBytes: null,
+                limitBytes: null,
+                percent: null,
+                badge: null,
+                pressureSignal: null,
+                lastPressureAt: null
+            },
+            ping: {
+                supported: /^https?:$/i.test(window.location.protocol),
+                value: null,
+                method: "HEAD fetch",
+                lastAt: null,
+                error: null
+            },
+            battery: {
+                supported: typeof navigator.getBattery === "function",
+                manager: null,
+                level: null,
+                charging: null,
+                drainRate: null,
+                samples: []
+            },
+            report: {
+                activePeriod: "day",
+                data: null,
+                profile: { name: "", email: "" },
+                visible: false
+            },
+            uiHistory: [],
+            lastRefreshAt: null,
+            latestMetrics: null,
+            lastSnapshotSyncAt: 0,
+            pageExitHandled: false
+        };
+
+        function clamp(value, min, max) {
+            return Math.min(max, Math.max(min, value));
+        }
+
+        function average(values) {
+            const defined = values.filter((value) => value != null && !Number.isNaN(value));
+            if (!defined.length) {
+                return null;
+            }
+            return defined.reduce((sum, value) => sum + value, 0) / defined.length;
+        }
+
+        function maxValue(values) {
+            const defined = values.filter((value) => value != null && !Number.isNaN(value));
+            return defined.length ? Math.max(...defined) : null;
+        }
+
+        function colorByPercent(percent) {
+            if (percent == null || Number.isNaN(percent)) {
+                return "var(--text-soft)";
+            }
+            if (percent < 40) {
+                return "var(--green)";
+            }
+            if (percent < 70) {
+                return "var(--yellow)";
+            }
+            return "var(--red)";
+        }
+
+        function colorByHealth(score) {
+            if (score >= 80) {
+                return "var(--green)";
+            }
+            if (score >= 55) {
+                return "var(--yellow)";
+            }
+            return "var(--red)";
+        }
+
+        function setText(id, text) {
+            const node = document.getElementById(id);
+            if (node) {
+                node.textContent = text;
+            }
+        }
+
+        function setColor(id, color) {
+            const node = document.getElementById(id);
+            if (node) {
+                node.style.color = color;
+            }
+        }
+
+        function setBar(id, percent) {
+            const node = document.getElementById(id);
+            if (node) {
+                node.style.width = `${clamp(percent || 0, 0, 100)}%`;
+            }
+        }
+
+        function formatDuration(ms) {
+            const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+            const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+            const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+            const seconds = String(totalSeconds % 60).padStart(2, "0");
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function formatMinutesHuman(minutes) {
+            if (minutes == null || Number.isNaN(minutes)) {
+                return "N/A";
+            }
+            if (minutes < 60) {
+                return `${minutes.toFixed(1)} minutes`;
+            }
+            const hours = minutes / 60;
+            if (hours < 24) {
+                return `${hours.toFixed(1)} hours`;
+            }
+            return `${(hours / 24).toFixed(1)} days`;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes == null || Number.isNaN(bytes)) {
+                return "--";
+            }
+            const units = ["B", "KB", "MB", "GB", "TB"];
+            let value = bytes;
+            let unitIndex = 0;
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex += 1;
+            }
+            return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+        }
+
+        function formatMegabytes(bytes) {
+            if (bytes == null || Number.isNaN(bytes)) {
+                return "N/A";
+            }
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function formatNumber(value, digits = 1, fallback = "N/A") {
+            if (value == null || Number.isNaN(value)) {
+                return fallback;
+            }
+            return Number(value).toFixed(digits);
+        }
+
+        function formatUnit(value, unit, digits = 1) {
+            if (value == null || Number.isNaN(value)) {
+                return "N/A";
+            }
+            return `${Number(value).toFixed(digits)}${unit}`;
+        }
+
+        function formatRatePerMinute(count, windowMs) {
+            if (!windowMs) {
+                return 0;
+            }
+            return Math.round((count / windowMs) * 60000);
+        }
+
+        function currentWindowMs() {
+            return Math.max(1000, Math.min(60000, performance.now() - state.frames.startedAt));
+        }
+
+        function cleanupTimedEntries(collection, ageMs) {
+            const cutoff = performance.now() - ageMs;
+            while (collection.length && collection[0].ts < cutoff) {
+                collection.shift();
+            }
+        }
+
+        function formatAuditTimestamp(value) {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return "N/A";
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            const seconds = String(date.getSeconds()).padStart(2, "0");
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function readJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function writeJson(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (error) {
+                // Ignore storage errors and keep the dashboard live.
+            }
+        }
+
+        function readNumber(key, fallback = 0) {
+            try {
+                const raw = localStorage.getItem(key);
+                const parsed = raw == null ? fallback : Number(raw);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function writeNumber(key, value) {
+            try {
+                localStorage.setItem(key, String(value));
+            } catch (error) {
+                // Ignore storage errors and keep the dashboard live.
+            }
+        }
+
+        function hashString(input) {
+            let hash = 2166136261;
+            for (let index = 0; index < input.length; index += 1) {
+                hash ^= input.charCodeAt(index);
+                hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            }
+            return Math.abs(hash >>> 0).toString(36).toUpperCase();
+        }
+
+        function generateHostId() {
+            const fingerprint = [
+                `${window.screen.width}x${window.screen.height}`,
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown",
+                navigator.language || "unknown"
+            ].join("|");
+            return `SG-${hashString(fingerprint).padStart(8, "0").slice(0, 10)}`;
+        }
+
+        function detectBrowser(userAgent) {
+            if (/Edg\//.test(userAgent)) {
+                return "Microsoft Edge";
+            }
+            if (/OPR\//.test(userAgent)) {
+                return "Opera";
+            }
+            if (/Chrome\//.test(userAgent) && !/Edg\//.test(userAgent)) {
+                return "Google Chrome";
+            }
+            if (/Firefox\//.test(userAgent)) {
+                return "Mozilla Firefox";
+            }
+            if (/Safari\//.test(userAgent) && !/Chrome\//.test(userAgent)) {
+                return "Safari";
+            }
+            return "Unknown Browser";
+        }
+
+        function detectOS(userAgent) {
+            if (/Windows NT 10.0/.test(userAgent)) {
+                return "Windows 10/11";
+            }
+            if (/Windows/.test(userAgent)) {
+                return "Windows";
+            }
+            if (/Mac OS X/.test(userAgent)) {
+                return "macOS";
+            }
+            if (/Android/.test(userAgent)) {
+                return "Android";
+            }
+            if (/iPhone|iPad|iPod/.test(userAgent)) {
+                return "iOS";
+            }
+            if (/Linux/.test(userAgent)) {
+                return "Linux";
+            }
+            return "Unknown OS";
+        }
+
+        function defaultNameFromAgent() {
+            return `${detectBrowser(navigator.userAgent)} User`;
+        }
+
+        function getStoredLifetimeMinutes() {
+            return readNumber(STORAGE_KEYS.lifetimeMinutes, 0);
+        }
+
+        function getLifetimeMinutes() {
+            return getStoredLifetimeMinutes() + ((performance.now() - startTime) / 60000);
+        }
+
+        function flushLifetimeUsage() {
+            if (state.pageExitHandled) {
+                return;
+            }
+            writeNumber(STORAGE_KEYS.lifetimeMinutes, getLifetimeMinutes());
+        }
+
+        function getSnapshots() {
+            return readJson(STORAGE_KEYS.snapshots, []);
+        }
+
+        function saveSnapshots(snapshots) {
+            const sorted = snapshots
+                .filter(Boolean)
+                .sort((left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime())
+                .slice(-MAX_SNAPSHOTS);
+            writeJson(STORAGE_KEYS.snapshots, sorted);
+            return sorted;
+        }
+
+        function getEvents() {
+            return readJson(STORAGE_KEYS.events, []);
+        }
+
+        function saveEvents(events) {
+            const pruned = events
+                .filter(Boolean)
+                .sort((left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime())
+                .slice(-200);
+            writeJson(STORAGE_KEYS.events, pruned);
+            return pruned;
+        }
+
+        function logSystemEvent(type) {
+            const events = getEvents();
+            events.push({
+                type,
+                timestamp: new Date().toISOString(),
+                sessionId: state.sessionId
+            });
+            saveEvents(events);
+        }
+
+        function getPeriodStart(periodKey) {
+            const period = REPORT_PERIODS[periodKey] || REPORT_PERIODS.day;
+            return Date.now() - period.ms;
+        }
+
+        function collectMixedContentResources() {
+            if (window.location.protocol !== "https:") {
+                return [];
+            }
+            return performance
+                .getEntriesByType("resource")
+                .map((entry) => entry.name)
+                .filter((name) => /^http:\/\//i.test(name));
+        }
+
+        function initClock() {
+            const refreshClock = () => {
+                const now = new Date();
+                setText("clock", now.toLocaleTimeString([], { hour12: false }));
+                setText("dateLine", now.toLocaleDateString([], {
+                    weekday: "short",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric"
+                }));
+                setText("sessionTimer", `Session: ${formatDuration(performance.now() - startTime)}`);
+                setText("detailSession", formatDuration(performance.now() - startTime));
+            };
+            refreshClock();
+            window.setInterval(refreshClock, 1000);
+        }
+
+        function initStaticDetails() {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown";
+            const platform = navigator.userAgentData && navigator.userAgentData.platform
+                ? navigator.userAgentData.platform
+                : (navigator.platform || "Unknown platform");
+            const screenText = `${window.screen.width} x ${window.screen.height}`;
+            const orientation = window.screen.orientation && window.screen.orientation.type
+                ? window.screen.orientation.type
+                : `${window.innerWidth >= window.innerHeight ? "landscape" : "portrait"} window`;
+            const cores = navigator.hardwareConcurrency ? String(navigator.hardwareConcurrency) : "N/A";
+            const pixelRatio = window.devicePixelRatio ? window.devicePixelRatio.toFixed(2) : "1.00";
+
+            setText("timezoneValue", timezone);
+            setText("platformValue", platform);
+            setText("screenValue", screenText);
+            setText("coresValue", cores);
+            setText("orientationValue", orientation);
+            setText("memoryApiValue", state.memory.supported ? "Supported" : "N/A");
+            setText("longTaskApiValue", "Checking...");
+            setText("batteryApiValue", state.battery.supported ? "Supported" : "N/A");
+
+            setText("detailTimezone", timezone);
+            setText("detailPlatform", platform);
+            setText("detailScreen", screenText);
+            setText("detailPixelRatio", pixelRatio);
+            setText("detailCores", cores);
+        }
+
+        function initCpuWorker() {
+            if (!state.cpu.supported) {
+                setText("cpuLoadMetric", "N/A");
+                setText("cpuLoadBadge", "N/A");
+                setText("cpuLoadDetail", "N/A - Web Workers or Blob URLs are not supported in this browser.");
+                setText("cpuOpsValue", "N/A");
+                setText("cpuBaselineValue", "N/A");
+                setText("supportWorker", "N/A - Worker not supported");
+                setText("supportWorkerCopy", "CPU speed estimation requires a Worker + benchmark loop.");
+                return;
+            }
+
+            setText("supportWorker", "Supported");
+            const workerSource = `
+                let active = false;
+                const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+                async function benchmarkLoop() {
+                    while (active) {
+                        const runMs = 350;
+                        const started = performance.now();
+                        let ops = 0;
+                        let seed = 1;
+                        while (performance.now() - started < runMs) {
+                            for (let i = 0; i < 6000; i += 1) {
+                                seed = (seed * 1.000001 + Math.sqrt((i + seed) % 997)) % 1000000;
+                            }
+                            ops += 6000;
+                        }
+                        const elapsed = performance.now() - started;
+                        self.postMessage({ type: "sample", opsPerSecond: ops / (elapsed / 1000), checksum: seed });
+                        await sleep(${REFRESH_MS});
+                    }
+                }
+                self.onmessage = (event) => {
+                    if (event.data === "start" && !active) {
+                        active = true;
+                        benchmarkLoop();
+                    }
+                    if (event.data === "stop") {
+                        active = false;
+                    }
+                };
+            `;
+
+            const workerBlob = new Blob([workerSource], { type: "text/javascript" });
+            const workerUrl = URL.createObjectURL(workerBlob);
+            state.cpu.worker = new Worker(workerUrl);
+            state.cpu.worker.onmessage = (event) => {
+                if (event.data.type !== "sample") {
+                    return;
+                }
+                const ops = event.data.opsPerSecond;
+                state.cpu.opsPerSecond = ops;
+                state.cpu.samples += 1;
+                if (state.cpu.baselineOpsPerSecond == null || ops > state.cpu.baselineOpsPerSecond) {
+                    state.cpu.baselineOpsPerSecond = ops;
+                }
+                if (state.cpu.baselineOpsPerSecond) {
+                    const ratio = clamp(ops / state.cpu.baselineOpsPerSecond, 0, 1);
+                    state.cpu.loadPercent = clamp((1 - ratio) * 100, 0, 100);
+                }
+            };
+            state.cpu.worker.postMessage("start");
+            window.addEventListener("beforeunload", () => {
+                if (state.cpu.worker) {
+                    state.cpu.worker.postMessage("stop");
+                    state.cpu.worker.terminate();
+                }
+                URL.revokeObjectURL(workerUrl);
+            });
+        }
+
+        function initFrameTracking() {
+            let lastTs = performance.now();
+            const onFrame = (ts) => {
+                const delta = ts - lastTs;
+                lastTs = ts;
+                state.frames.deltas.push({ ts, delta });
+                cleanupTimedEntries(state.frames.deltas, 60000);
+
+                if (state.frames.worstDelta == null || delta > state.frames.worstDelta) {
+                    state.frames.worstDelta = delta;
+                }
+                if (delta > JANK_THRESHOLD_MS) {
+                    state.frames.lastJankDelta = delta;
+                    state.frames.totalJank += 1;
+                    state.frames.jankEvents.push({ ts, delta });
+                    cleanupTimedEntries(state.frames.jankEvents, 60000);
+                }
+
+                const oneSecondAgo = ts - 1000;
+                const recentFrames = state.frames.deltas.filter((entry) => entry.ts >= oneSecondAgo);
+                if (recentFrames.length > 1) {
+                    const averageDelta = recentFrames.reduce((sum, entry) => sum + entry.delta, 0) / recentFrames.length;
+                    state.frames.fps = averageDelta > 0 ? 1000 / averageDelta : null;
+                }
+
+                requestAnimationFrame(onFrame);
+            };
+            requestAnimationFrame(onFrame);
+        }
+
+        function initLongTaskObserver() {
+            const supported = typeof PerformanceObserver !== "undefined"
+                && typeof PerformanceObserver.supportedEntryTypes !== "undefined"
+                && PerformanceObserver.supportedEntryTypes.includes("longtask");
+            state.longTasks.supported = supported;
+            setText("longTaskApiValue", supported ? "Supported" : "N/A");
+            setText("supportLongTask", supported ? "Supported" : "N/A - longtask not supported");
+
+            if (!supported) {
+                setText("longTaskMetric", "N/A");
+                setText("longTaskBadge", "N/A");
+                setText("longTaskDetail", "N/A - PerformanceObserver longtask entries are not supported in this browser.");
+                setText("blockedTimeValue", "N/A");
+                setText("worstLongTaskValue", "N/A");
+                return;
+            }
+
+            const observer = new PerformanceObserver((list) => {
+                list.getEntries().forEach((entry) => {
+                    const duration = entry.duration;
+                    const stamp = performance.now();
+                    state.longTasks.entries.push({ ts: stamp, duration });
+                    state.longTasks.totalCount += 1;
+                    state.longTasks.totalBlocked += duration;
+                    cleanupTimedEntries(state.longTasks.entries, 60000);
+                    if (state.longTasks.worst == null || duration > state.longTasks.worst) {
+                        state.longTasks.worst = duration;
+                    }
+                });
+            });
+
+            try {
+                observer.observe({ entryTypes: ["longtask"] });
+            } catch (error) {
+                state.longTasks.supported = false;
+                setText("longTaskApiValue", "N/A");
+                setText("supportLongTask", "N/A - observer failed");
+                setText("longTaskMetric", "N/A");
+                setText("longTaskBadge", "N/A");
+                setText("longTaskDetail", "N/A - PerformanceObserver longtask observation could not be started.");
+            }
+        }
+
+        function initMemoryTracking() {
+            setText("supportMemory", state.memory.supported ? "Supported" : "N/A - performance.memory not supported");
+            setText("memoryApiValue", state.memory.supported ? "Supported" : "N/A");
+
+            if (!state.memory.supported) {
+                setText("memoryMetric", "N/A");
+                setText("memoryBadge", "N/A");
+                setText("memoryDetail", "N/A - performance.memory not supported in this browser.");
+                setText("heapUsedValue", "N/A");
+                setText("heapLimitValue", "N/A");
+                setText("summaryMemory", "N/A");
+                setText("supportMemoryCopy", "This metric needs performance.memory, which is typically available in Chromium browsers.");
+            }
+
+            if ("onmemorypressure" in window) {
+                state.memory.pressureSupported = true;
+                setText("supportPressure", "Supported");
+                window.addEventListener("memorypressure", () => {
+                    state.memory.lastPressureAt = performance.now();
+                    state.memory.pressureSignal = "critical";
+                });
+            } else {
+                setText("supportPressure", "N/A - MemoryPressure API not supported");
+                setText("supportPressureCopy", "Falling back to measured heap pressure only.");
+            }
+        }
+
+        async function initBatteryTracking() {
+            setText("supportBattery", state.battery.supported ? "Supported" : "N/A - Battery Status API not supported");
+
+            if (!state.battery.supported) {
+                setText("batteryMetric", "N/A");
+                setText("batteryBadge", "N/A");
+                setText("batteryDetail", "N/A - Battery Status API not supported in this browser.");
+                setText("batteryLevelValue", "N/A");
+                setText("batteryStatusValue", "N/A");
+                setText("detailCharging", "N/A");
+                return;
+            }
+
+            try {
+                const battery = await navigator.getBattery();
+                state.battery.manager = battery;
+
+                const pushSample = () => {
+                    const now = performance.now();
+                    state.battery.level = battery.level * 100;
+                    state.battery.charging = battery.charging;
+                    state.battery.samples.push({ ts: now, level: battery.level });
+                    cleanupTimedEntries(state.battery.samples, 3600000);
+                };
+
+                const recompute = () => {
+                    pushSample();
+                    const samples = state.battery.samples;
+                    const first = samples[0];
+                    const last = samples[samples.length - 1];
+                    if (!first || !last || last.ts <= first.ts || battery.charging) {
+                        state.battery.drainRate = 0;
+                        return;
+                    }
+                    const levelDrop = (first.level - last.level) * 100;
+                    const hours = (last.ts - first.ts) / 3600000;
+                    state.battery.drainRate = levelDrop > 0 && hours > 0 ? levelDrop / hours : 0;
+                };
+
+                ["levelchange", "chargingchange"].forEach((eventName) => {
+                    battery.addEventListener(eventName, recompute);
+                });
+                recompute();
+            } catch (error) {
+                state.battery.supported = false;
+                setText("supportBattery", "N/A - Battery Status API unavailable");
+                setText("batteryMetric", "N/A");
+                setText("batteryBadge", "N/A");
+                setText("batteryDetail", "N/A - Battery Status API could not be initialized.");
+                setText("batteryLevelValue", "N/A");
+                setText("batteryStatusValue", "N/A");
+                setText("detailCharging", "N/A");
+            }
+        }
+
+        async function measurePing() {
+            if (!state.ping.supported) {
+                state.ping.error = "N/A - fetch ping requires HTTP or HTTPS.";
+                return;
+            }
+
+            const targetUrl = `${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}guardian_ping=${Date.now()}`;
+            const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+            const timeout = controller ? window.setTimeout(() => controller.abort(), 4000) : null;
+            const started = performance.now();
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: "HEAD",
+                    cache: "no-store",
+                    signal: controller ? controller.signal : undefined
+                });
+                if (!response.ok && response.status !== 304) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                state.ping.value = performance.now() - started;
+                state.ping.lastAt = Date.now();
+                state.ping.error = null;
+                state.ping.method = "HEAD fetch";
+            } catch (headError) {
+                try {
+                    const startedGet = performance.now();
+                    const response = await fetch(targetUrl, { cache: "no-store" });
+                    if (!response.ok && response.status !== 304) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    state.ping.value = performance.now() - startedGet;
+                    state.ping.lastAt = Date.now();
+                    state.ping.error = null;
+                    state.ping.method = "GET fetch";
+                } catch (getError) {
+                    state.ping.error = `N/A - ping fetch failed (${getError.message})`;
+                }
+            } finally {
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+            }
+        }
+
+        function updateMemorySnapshot() {
+            if (!state.memory.supported) {
+                return;
+            }
+
+            const memory = performance.memory;
+            state.memory.usedBytes = memory.usedJSHeapSize;
+            state.memory.limitBytes = memory.jsHeapSizeLimit;
+            state.memory.percent = memory.jsHeapSizeLimit
+                ? clamp((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100, 0, 100)
+                : null;
+
+            let badge = "Normal";
+            if (state.memory.percent >= 85) {
+                badge = "Critical";
+            } else if (state.memory.percent >= 65) {
+                badge = "Moderate";
+            }
+
+            if (state.memory.lastPressureAt && performance.now() - state.memory.lastPressureAt < 30000) {
+                badge = "Critical";
+            }
+
+            state.memory.badge = badge;
+        }
+
+        function deriveLagScore() {
+            cleanupTimedEntries(state.frames.deltas, 60000);
+            cleanupTimedEntries(state.frames.jankEvents, 60000);
+            const windowMs = currentWindowMs();
+            const droppedFrames = state.frames.deltas.reduce((sum, entry) => {
+                return sum + Math.max(0, Math.round(entry.delta / IDEAL_FRAME_MS) - 1);
+            }, 0);
+            const expectedFrames = windowMs / IDEAL_FRAME_MS;
+            return expectedFrames > 0 ? clamp((droppedFrames / expectedFrames) * 100, 0, 100) : 0;
+        }
+
+        function deriveLongTaskStats() {
+            if (!state.longTasks.supported) {
+                return { rate: null, blockedMs: null, worst: null };
+            }
+            cleanupTimedEntries(state.longTasks.entries, 60000);
+            const windowMs = currentWindowMs();
+            const count = state.longTasks.entries.length;
+            const blockedMs = state.longTasks.entries.reduce((sum, entry) => sum + entry.duration, 0);
+            const rate = formatRatePerMinute(count, windowMs);
+            return { rate, blockedMs, worst: state.longTasks.worst };
+        }
+
+        function computeHealth(metrics) {
+            const components = [];
+            if (metrics.fps != null) {
+                components.push(clamp((metrics.fps / 60) * 100, 0, 100));
+            }
+            if (metrics.lagScore != null) {
+                components.push(100 - metrics.lagScore);
+            }
+            if (metrics.cpuLoad != null) {
+                components.push(100 - metrics.cpuLoad);
+            }
+            if (metrics.memoryPercent != null) {
+                components.push(100 - metrics.memoryPercent);
+            }
+            if (metrics.longTaskRate != null) {
+                components.push(clamp(100 - metrics.longTaskRate * 8, 0, 100));
+            }
+            if (!components.length) {
+                return 100;
+            }
+            return Math.round(components.reduce((sum, value) => sum + value, 0) / components.length);
+        }
+
+        function buildInsight(metrics) {
+            if (metrics.fps != null && metrics.fps < 30) {
+                return "Frame rate has dropped below 30fps, so the browser is under visible rendering stress.";
+            }
+            if (metrics.lagScore != null && metrics.lagScore >= 60) {
+                return "Lag score is elevated, which means dropped frames and jank are affecting responsiveness.";
+            }
+            if (metrics.cpuLoad != null && metrics.cpuLoad >= 70) {
+                return "CPU benchmark throughput is significantly below the session baseline, indicating high active load.";
+            }
+            if (metrics.memoryBadge === "Critical") {
+                return "Heap usage is near the browser limit or a native pressure signal was raised, so memory pressure is critical.";
+            }
+            if (metrics.longTaskRate != null && metrics.longTaskRate > 0) {
+                return "Long tasks are being observed, which can block the main thread and create input delay.";
+            }
+            return "System is currently smooth, with stable frame pacing and no major runtime bottleneck leading the health score.";
+        }
+
+        function collectCurrentMetrics() {
+            updateMemorySnapshot();
+            const lagScore = deriveLagScore();
+            const longTaskStats = deriveLongTaskStats();
+            const fps = state.frames.fps != null ? Math.round(state.frames.fps) : null;
+            const cpuLoad = state.cpu.samples >= 2 ? Math.round(state.cpu.loadPercent) : null;
+            const memoryPercent = state.memory.percent != null ? Math.round(state.memory.percent) : null;
+            const jankRate = formatRatePerMinute(state.frames.jankEvents.length, currentWindowMs());
+            const pingMs = state.ping.value != null ? Math.round(state.ping.value) : null;
+            const healthScore = computeHealth({
+                fps,
+                lagScore,
+                cpuLoad,
+                memoryPercent,
+                longTaskRate: longTaskStats.rate
+            });
+
+            return {
+                timestamp: new Date().toISOString(),
+                sessionId: state.sessionId,
+                hostId: generateHostId(),
+                cpuLoad,
+                cpuOps: state.cpu.opsPerSecond != null ? Math.round(state.cpu.opsPerSecond) : null,
+                cpuBaseline: state.cpu.baselineOpsPerSecond != null ? Math.round(state.cpu.baselineOpsPerSecond) : null,
+                fps,
+                lagScore: Math.round(lagScore),
+                jankRate,
+                jankTotal: state.frames.totalJank,
+                worstDelta: state.frames.worstDelta,
+                memoryUsedBytes: state.memory.usedBytes,
+                memoryLimitBytes: state.memory.limitBytes,
+                memoryPercent,
+                memoryBadge: state.memory.badge,
+                pingMs,
+                pingMethod: state.ping.method,
+                longTaskRate: longTaskStats.rate,
+                longTaskTotal: state.longTasks.totalCount,
+                longTaskWorst: state.longTasks.worst,
+                longTaskBlockedTotal: state.longTasks.totalBlocked,
+                batteryLevel: state.battery.level != null ? Math.round(state.battery.level) : null,
+                batteryCharging: state.battery.charging,
+                batteryDrainRate: state.battery.drainRate != null ? Number(state.battery.drainRate.toFixed(2)) : null,
+                healthScore,
+                mixedContentCount: collectMixedContentResources().length,
+                mixedContentSources: collectMixedContentResources().slice(0, 12)
+            };
+        }
+
+        function syncSnapshot(force = false) {
+            const snapshot = collectCurrentMetrics();
+            state.latestMetrics = snapshot;
+            const now = Date.now();
+            const snapshots = getSnapshots();
+            const lastSnapshot = snapshots[snapshots.length - 1];
+            const lastTs = lastSnapshot ? new Date(lastSnapshot.timestamp).getTime() : 0;
+            const shouldWrite = force || !lastSnapshot || (now - lastTs >= SNAPSHOT_MS);
+
+            if (!shouldWrite) {
+                return snapshot;
+            }
+
+            if (lastSnapshot && snapshot.sessionId === lastSnapshot.sessionId && Math.abs(now - lastTs) < 30000) {
+                snapshots[snapshots.length - 1] = snapshot;
+            } else {
+                snapshots.push(snapshot);
+            }
+            saveSnapshots(snapshots);
+            state.lastSnapshotSyncAt = now;
+            return snapshot;
+        }
+
+        function refreshDashboard() {
+            const metrics = collectCurrentMetrics();
+            state.latestMetrics = metrics;
+            const healthColor = colorByHealth(metrics.healthScore);
+            const headline = buildInsight({
+                fps: metrics.fps,
+                lagScore: metrics.lagScore,
+                cpuLoad: metrics.cpuLoad,
+                memoryBadge: metrics.memoryBadge,
+                longTaskRate: metrics.longTaskRate
+            });
+
+            document.getElementById("healthGauge").style.setProperty("--score", metrics.healthScore);
+            document.getElementById("healthGauge").style.setProperty("--gauge", healthColor);
+            setText("healthScore", String(metrics.healthScore));
+            setColor("healthScore", healthColor);
+            setText("healthHeadline", headline);
+            setText("healthDetail", `Health score live blend: FPS ${metrics.fps ?? "N/A"}, lag ${metrics.lagScore}, memory ${metrics.memoryBadge || "N/A"}, CPU ${metrics.cpuLoad ?? "N/A"}, long tasks ${metrics.longTaskRate ?? "N/A"}/min.`);
+            setText("healthBadge", metrics.healthScore >= 80 ? "Stable" : metrics.healthScore >= 55 ? "Watch" : "Critical");
+            setColor("healthBadge", healthColor);
+            document.getElementById("healthBadge").style.borderColor = healthColor;
+            document.getElementById("healthBadge").style.background = "var(--bg-soft)";
+
+            const cpuColor = colorByPercent(metrics.cpuLoad);
+            setText("cpuLoadMetric", metrics.cpuLoad == null ? "Warming..." : `${metrics.cpuLoad}%`);
+            setText("cpuLoadBadge", metrics.cpuLoad == null ? "Benchmarking" : metrics.cpuLoad < 40 ? "Light" : metrics.cpuLoad < 70 ? "Busy" : "Heavy");
+            setText("cpuLoadDetail", metrics.cpuLoad == null
+                ? "Collecting enough worker samples to establish a live baseline."
+                : `Measured ${metrics.cpuOps.toLocaleString()} benchmark operations per second against the best live session baseline.`);
+            setColor("cpuLoadMetric", cpuColor);
+            setColor("cpuLoadBadge", cpuColor);
+            setBar("cpuLoadBar", metrics.cpuLoad || 0);
+            setText("cpuOpsValue", metrics.cpuOps == null ? "--" : `${metrics.cpuOps.toLocaleString()}`);
+            setText("cpuBaselineValue", metrics.cpuBaseline == null ? "--" : `${metrics.cpuBaseline.toLocaleString()}`);
+            setText("summaryCpu", metrics.cpuLoad == null ? "Warming up..." : `${metrics.cpuLoad}%`);
+
+            const fpsColor = metrics.fps == null ? "var(--text-soft)" : metrics.fps < 30 ? "var(--red)" : metrics.fps < 50 ? "var(--yellow)" : "var(--green)";
+            setText("fpsMetric", metrics.fps == null ? "--" : String(metrics.fps));
+            setText("fpsBadge", metrics.fps == null ? "Sampling" : metrics.fps < 30 ? "Low FPS" : metrics.fps < 50 ? "Soft" : "Healthy");
+            setText("fpsDetail", metrics.fps == null
+                ? "Waiting for frame timing samples."
+                : metrics.fps < 30
+                    ? "FPS is below 30, so the dashboard is detecting visible frame loss."
+                    : "Actual frame rate is derived from recent requestAnimationFrame deltas.");
+            setColor("fpsMetric", fpsColor);
+            setColor("fpsBadge", fpsColor);
+            setBar("fpsBar", metrics.fps == null ? 0 : clamp((metrics.fps / 60) * 100, 0, 100));
+            setText("worstDeltaValue", metrics.worstDelta == null ? "--" : `${Math.round(metrics.worstDelta)} ms`);
+            setText("summaryFps", metrics.fps == null ? "--" : `${metrics.fps}`);
+
+            const lagColor = colorByPercent(metrics.lagScore);
+            setText("lagMetric", `${metrics.lagScore}`);
+            setText("lagBadge", metrics.lagScore < 20 ? "Smooth" : metrics.lagScore < 50 ? "Watch" : "Janky");
+            const lastJankEvent = state.frames.jankEvents[state.frames.jankEvents.length - 1];
+            setText("lagDetail", lastJankEvent && performance.now() - lastJankEvent.ts < 10000
+                ? `Jank detected: latest frame delta was ${Math.round(metrics.worstDelta || state.frames.lastJankDelta || 0)} ms.`
+                : "Lag score remains tied to dropped frames across the last minute of activity.");
+            setColor("lagMetric", lagColor);
+            setColor("lagBadge", lagColor);
+            setBar("lagBar", metrics.lagScore);
+            setText("jankRateValue", String(metrics.jankRate));
+            setText("jankEventValue", state.frames.lastJankDelta == null ? "None" : `${Math.round(state.frames.lastJankDelta)} ms`);
+
+            if (state.memory.supported) {
+                const memoryColor = colorByPercent(metrics.memoryPercent);
+                setText("memoryMetric", metrics.memoryPercent == null ? "--" : `${metrics.memoryPercent}%`);
+                setText("memoryBadge", metrics.memoryBadge || "Pending");
+                setText("memoryDetail", metrics.memoryPercent == null
+                    ? "Waiting for a heap snapshot."
+                    : `${metrics.memoryBadge} pressure from usedJSHeapSize versus jsHeapSizeLimit.`);
+                setColor("memoryMetric", memoryColor);
+                setColor("memoryBadge", metrics.memoryBadge === "Critical" ? "var(--red)" : metrics.memoryBadge === "Moderate" ? "var(--yellow)" : "var(--green)");
+                setBar("memoryBar", metrics.memoryPercent || 0);
+                setText("heapUsedValue", formatBytes(metrics.memoryUsedBytes));
+                setText("heapLimitValue", formatBytes(metrics.memoryLimitBytes));
+                setText("summaryMemory", metrics.memoryBadge || "Pending");
+            } else {
+                setText("summaryMemory", "N/A");
+            }
+
+            if (state.ping.supported) {
+                const pingColor = metrics.pingMs == null ? "var(--text-soft)" : metrics.pingMs < 100 ? "var(--green)" : metrics.pingMs < 250 ? "var(--yellow)" : "var(--red)";
+                setText("pingMetric", metrics.pingMs == null ? "Checking..." : `${metrics.pingMs} ms`);
+                setText("pingBadge", metrics.pingMs == null ? "Polling" : metrics.pingMs < 100 ? "Low" : metrics.pingMs < 250 ? "Medium" : "High");
+                setText("pingDetail", state.ping.error || "Same-origin fetch polling provides the current round-trip estimate.");
+                setText("pingSampleValue", state.ping.lastAt ? new Date(state.ping.lastAt).toLocaleTimeString([], { hour12: false }) : "--");
+                setText("pingTransportValue", metrics.pingMethod);
+                setColor("pingMetric", pingColor);
+                setColor("pingBadge", pingColor);
+                setBar("pingBar", metrics.pingMs == null ? 0 : clamp((metrics.pingMs / 400) * 100, 0, 100));
+                setText("summaryPing", metrics.pingMs == null ? "Checking..." : `${metrics.pingMs} ms`);
+                setText("supportPing", "Supported");
+                setText("supportPingCopy", "Polling the current page with cache disabled for live latency measurement.");
+            } else {
+                setText("pingMetric", "N/A");
+                setText("pingBadge", "N/A");
+                setText("pingDetail", "N/A - fetch ping requires this dashboard to run over HTTP or HTTPS.");
+                setText("pingSampleValue", "N/A");
+                setText("summaryPing", "N/A");
+                setText("supportPing", "N/A - HTTP fetch unavailable");
+                setText("supportPingCopy", "Open the dashboard through a local server to enable round-trip ping measurement.");
+            }
+
+            if (state.longTasks.supported) {
+                const longTaskColor = colorByPercent(metrics.longTaskRate == null ? 0 : clamp(metrics.longTaskRate * 12, 0, 100));
+                setText("longTaskMetric", `${metrics.longTaskRate ?? 0} / min`);
+                setText("longTaskBadge", (metrics.longTaskRate || 0) === 0 ? "Clear" : (metrics.longTaskRate || 0) < 4 ? "Watch" : "Blocking");
+                setText("longTaskDetail", (metrics.longTaskRate || 0) === 0
+                    ? "No long tasks were observed in the recent window."
+                    : "Main-thread blocking work over 50ms is being counted in the last minute.");
+                setColor("longTaskMetric", longTaskColor);
+                setColor("longTaskBadge", longTaskColor);
+                setBar("longTaskBar", metrics.longTaskRate == null ? 0 : clamp(metrics.longTaskRate * 12, 0, 100));
+                setText("blockedTimeValue", metrics.longTaskBlockedTotal == null ? "--" : `${Math.round(metrics.longTaskBlockedTotal)} ms`);
+                setText("worstLongTaskValue", metrics.longTaskWorst == null ? "--" : `${Math.round(metrics.longTaskWorst)} ms`);
+            }
+
+            if (state.battery.supported && state.battery.manager) {
+                const level = metrics.batteryLevel;
+                const batteryColor = level == null ? "var(--text-soft)" : level < 20 ? "var(--red)" : level < 45 ? "var(--yellow)" : "var(--green)";
+                setText("batteryMetric", level == null ? "--" : `${level}%`);
+                setText("batteryBadge", state.battery.charging ? "Charging" : "Battery");
+                setText("batteryDetail", state.battery.charging
+                    ? "Battery is charging, so drain rate is paused."
+                    : metrics.batteryDrainRate && metrics.batteryDrainRate > 0
+                        ? `Drain: ~${metrics.batteryDrainRate.toFixed(1)}% / hr based on observed battery drop.`
+                        : "Drain rate will appear once the battery level changes during this session.");
+                setColor("batteryMetric", batteryColor);
+                setColor("batteryBadge", state.battery.charging ? "var(--blue)" : batteryColor);
+                setBar("batteryBar", level || 0);
+                setText("batteryLevelValue", level == null ? "--" : `${level}%`);
+                setText("batteryStatusValue", state.battery.charging ? "Charging" : "Discharging");
+                setText("detailCharging", state.battery.charging ? "Yes" : "No");
+            }
+
+            const sessionValue = formatDuration(performance.now() - startTime);
+            setText("overviewMetric", "Live");
+            setText("overviewBadge", "Runtime");
+            setText("overviewDetail", `Session timer ${sessionValue}, screen ${window.screen.width} x ${window.screen.height}, timezone ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`);
+
+            state.uiHistory.push({
+                ts: performance.now(),
+                smoothness: metrics.fps == null ? 0 : clamp((metrics.fps / 60) * 100, 0, 100),
+                hadJank: state.frames.jankEvents.length > 0 && (!state.lastRefreshAt || state.frames.jankEvents[state.frames.jankEvents.length - 1].ts >= state.lastRefreshAt)
+            });
+            if (state.uiHistory.length > HISTORY_LIMIT) {
+                state.uiHistory.shift();
+            }
+            state.lastRefreshAt = performance.now();
+            drawSparkline();
+            setText("heroCopy", headline);
+        }
+
+        function drawSparkline() {
+            const canvas = document.getElementById("telemetryCanvas");
+            if (!canvas) {
+                return;
+            }
+            const ctx = canvas.getContext("2d");
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = canvas.clientWidth || 1100;
+            const displayHeight = canvas.clientHeight || 220;
+
+            if (canvas.width !== Math.floor(displayWidth * dpr) || canvas.height !== Math.floor(displayHeight * dpr)) {
+                canvas.width = Math.floor(displayWidth * dpr);
+                canvas.height = Math.floor(displayHeight * dpr);
+            }
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.scale(dpr, dpr);
+
+            const width = displayWidth;
+            const height = displayHeight;
+            const padding = 16;
+            const data = state.uiHistory;
+            const styles = getComputedStyle(document.documentElement);
+            const lineColor = styles.getPropertyValue("--blue").trim();
+            const redColor = styles.getPropertyValue("--red").trim();
+            const gridColor = styles.getPropertyValue("--line").trim();
+            const fillColor = styles.getPropertyValue("--bg-soft").trim();
+
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 4; i += 1) {
+                const y = padding + ((height - padding * 2) / 3) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+
+            if (!data.length) {
+                return;
+            }
+
+            ctx.beginPath();
+            data.forEach((point, index) => {
+                const x = padding + ((width - padding * 2) / Math.max(1, data.length - 1)) * index;
+                const y = height - padding - ((height - padding * 2) * point.smoothness) / 100;
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            data.forEach((point, index) => {
+                if (!point.hadJank) {
+                    return;
+                }
+                const x = padding + ((width - padding * 2) / Math.max(1, data.length - 1)) * index;
+                const y = height - padding - ((height - padding * 2) * point.smoothness) / 100;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 12);
+                ctx.lineTo(x, height - padding + 2);
+                ctx.strokeStyle = redColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = redColor;
+                ctx.fill();
+            });
+        }
+
+        function setActivePeriod(periodKey) {
+            state.report.activePeriod = periodKey;
+            document.querySelectorAll(".period-button").forEach((button) => {
+                button.classList.toggle("active", button.dataset.period === periodKey);
+            });
+        }
+
+        function loadReportProfile() {
+            const saved = readJson(STORAGE_KEYS.profile, {});
+            state.report.profile = {
+                name: saved.name || defaultNameFromAgent(),
+                email: saved.email || ""
+            };
+            document.getElementById("reportName").value = state.report.profile.name;
+            document.getElementById("reportEmail").value = state.report.profile.email;
+        }
+
+        function saveReportProfile() {
+            state.report.profile = {
+                name: document.getElementById("reportName").value.trim() || defaultNameFromAgent(),
+                email: document.getElementById("reportEmail").value.trim()
+            };
+            writeJson(STORAGE_KEYS.profile, state.report.profile);
+        }
+
+        function buildReportIdentity(snapshot) {
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform || "Unknown platform";
+            const browser = detectBrowser(userAgent);
+            const os = detectOS(userAgent);
+            const hostId = generateHostId();
+            const batteryHealth = "N/A — Battery health API not supported";
+            return {
+                name: state.report.profile.name || defaultNameFromAgent(),
+                email: state.report.profile.email || "N/A",
+                hostId,
+                browser,
+                os,
+                platform,
+                screen: `${window.screen.width} x ${window.screen.height}`,
+                pixelRatio: window.devicePixelRatio ? window.devicePixelRatio.toFixed(2) : "1.00",
+                cores: navigator.hardwareConcurrency ? String(navigator.hardwareConcurrency) : "N/A — hardwareConcurrency not supported",
+                deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "N/A — deviceMemory not supported",
+                batteryLevel: snapshot.batteryLevel == null ? "N/A — Battery Status API not supported" : `${snapshot.batteryLevel}%`,
+                batteryHealth,
+                batteryCharging: snapshot.batteryCharging == null ? "N/A — Battery Status API not supported" : (snapshot.batteryCharging ? "Charging" : "Discharging"),
+                sessionDuration: formatDuration(performance.now() - startTime),
+                lifetimeUsage: formatMinutesHuman(getLifetimeMinutes())
+            };
+        }
+
+        function calculateCounterTotal(snapshots, field) {
+            const sessions = new Map();
+            snapshots.forEach((snapshot) => {
+                if (!sessions.has(snapshot.sessionId)) {
+                    sessions.set(snapshot.sessionId, []);
+                }
+                sessions.get(snapshot.sessionId).push(snapshot);
+            });
+
+            let total = 0;
+            sessions.forEach((group) => {
+                group.sort((left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime());
+                const values = group.map((item) => Number(item[field])).filter((value) => Number.isFinite(value));
+                if (!values.length) {
+                    return;
+                }
+                if (values.length === 1) {
+                    total += Math.max(0, values[0]);
+                    return;
+                }
+                total += Math.max(0, values[values.length - 1] - values[0]);
+            });
+            return total;
+        }
+
+        function bucketKeyForPeriod(timestamp, periodKey) {
+            const date = new Date(timestamp);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            if (periodKey === "day") {
+                return {
+                    key: `${year}-${month}-${day} ${String(date.getHours()).padStart(2, "0")}:00`,
+                    sort: date.setMinutes(0, 0, 0)
+                };
+            }
+            if (periodKey === "week") {
+                return {
+                    key: `${year}-${month}-${day}`,
+                    sort: date.setHours(0, 0, 0, 0)
+                };
+            }
+            if (periodKey === "month") {
+                const weekStart = new Date(date);
+                const offset = (weekStart.getDay() + 6) % 7;
+                weekStart.setDate(weekStart.getDate() - offset);
+                weekStart.setHours(0, 0, 0, 0);
+                const label = formatAuditTimestamp(weekStart).slice(0, 10);
+                return {
+                    key: `Week of ${label}`,
+                    sort: weekStart.getTime()
+                };
+            }
+            return {
+                key: `${year}-${month}`,
+                sort: new Date(year, date.getMonth(), 1).getTime()
+            };
+        }
+
+        function buildBreakdownRows(snapshots, periodKey) {
+            const buckets = new Map();
+            snapshots.forEach((snapshot) => {
+                const bucket = bucketKeyForPeriod(snapshot.timestamp, periodKey);
+                if (!buckets.has(bucket.key)) {
+                    buckets.set(bucket.key, { key: bucket.key, sort: bucket.sort, items: [] });
+                }
+                buckets.get(bucket.key).items.push(snapshot);
+            });
+
+            return Array.from(buckets.values())
+                .sort((left, right) => left.sort - right.sort)
+                .map((bucket) => ({
+                    label: bucket.key,
+                    avgCpuLoad: average(bucket.items.map((item) => item.cpuLoad)),
+                    avgFps: average(bucket.items.map((item) => item.fps)),
+                    peakMemoryBytes: maxValue(bucket.items.map((item) => item.memoryUsedBytes)),
+                    avgPing: average(bucket.items.map((item) => item.pingMs)),
+                    avgHealth: average(bucket.items.map((item) => item.healthScore))
+                }));
+        }
+
+        function buildThreatRows(snapshots) {
+            const rows = [];
+            const mixedContentSources = Array.from(new Set(
+                snapshots.flatMap((snapshot) => Array.isArray(snapshot.mixedContentSources) ? snapshot.mixedContentSources : [])
+            ));
+            mixedContentSources.forEach((source) => {
+                rows.push({
+                    threat: "Mixed Content Warning",
+                    source,
+                    action: "Auto-Blocked"
+                });
+            });
+
+            const longTaskWorst = maxValue(snapshots.map((snapshot) => snapshot.longTaskWorst));
+            const longTaskTotal = calculateCounterTotal(snapshots, "longTaskTotal");
+            if (longTaskWorst != null && longTaskWorst > 100) {
+                rows.push({
+                    threat: "Performance Threat",
+                    source: `Main thread long task max ${Math.round(longTaskWorst)} ms across ${longTaskTotal} observed tasks`,
+                    action: "Flagged"
+                });
+            }
+
+            const peakMemoryPercent = maxValue(snapshots.map((snapshot) => snapshot.memoryPercent));
+            if (peakMemoryPercent != null && peakMemoryPercent > 85) {
+                rows.push({
+                    threat: "Memory Overflow Risk",
+                    source: `JS heap pressure peaked at ${Math.round(peakMemoryPercent)}%`,
+                    action: "Monitoring"
+                });
+            }
+
+            return rows;
+        }
+
+        function buildScore(summary, threatsFound) {
+            const cpuPoints = summary.avgCpuLoad == null ? null : clamp(((100 - summary.avgCpuLoad) / 100) * 25, 0, 25);
+            const memoryPoints = summary.avgMemoryPercent == null ? null : clamp(((100 - summary.avgMemoryPercent) / 100) * 25, 0, 25);
+            const fpsPoints = summary.avgFps == null ? null : clamp((summary.avgFps / 60) * 25, 0, 25);
+            const networkPoints = summary.avgPing == null ? null : clamp((1 - Math.min(summary.avgPing, 400) / 400) * 15, 0, 15);
+            const threatPoints = clamp(10 - threatsFound * 2.5, 0, 10);
+
+            const parts = [
+                { label: "CPU", max: 25, value: cpuPoints },
+                { label: "Memory", max: 25, value: memoryPoints },
+                { label: "FPS", max: 25, value: fpsPoints },
+                { label: "Network", max: 15, value: networkPoints },
+                { label: "Threats", max: 10, value: threatPoints }
+            ];
+
+            const availableMax = parts.reduce((sum, part) => sum + (part.value == null ? 0 : part.max), 0);
+            const earned = parts.reduce((sum, part) => sum + (part.value == null ? 0 : part.value), 0);
+            const finalScore = availableMax > 0 ? Math.round((earned / availableMax) * 100) : 100;
+            const tier = finalScore >= 80 ? "Excellent" : finalScore >= 60 ? "Good" : "Critical";
+            const verdict = finalScore >= 80
+                ? "System is performing optimally with no critical threats detected."
+                : finalScore >= 60
+                    ? "System is stable overall, but a few resource and responsiveness indicators need attention."
+                    : "System is under notable pressure or threat conditions and requires immediate review.";
+            return { parts, finalScore, tier, verdict };
+        }
+
+        function prepareReportData(periodKey) {
+            saveReportProfile();
+            const currentSnapshot = syncSnapshot(true);
+            const period = REPORT_PERIODS[periodKey] || REPORT_PERIODS.day;
+            const start = getPeriodStart(periodKey);
+            const allSnapshots = getSnapshots();
+            const allWithCurrent = allSnapshots.length ? allSnapshots : [currentSnapshot];
+            let filtered = allWithCurrent.filter((snapshot) => new Date(snapshot.timestamp).getTime() >= start);
+            if (!filtered.length) {
+                filtered = [currentSnapshot];
+            }
+
+            const hasFullCoverage = allWithCurrent.some((snapshot) => new Date(snapshot.timestamp).getTime() <= start);
+            const insufficient = filtered.length < 2 || !hasFullCoverage;
+            const identity = buildReportIdentity(currentSnapshot);
+            const events = getEvents()
+                .filter((event) => new Date(event.timestamp).getTime() >= start)
+                .slice(-10)
+                .reverse();
+
+            const summary = {
+                avgCpuLoad: average(filtered.map((snapshot) => snapshot.cpuLoad)),
+                avgFps: average(filtered.map((snapshot) => snapshot.fps)),
+                peakMemoryBytes: maxValue(filtered.map((snapshot) => snapshot.memoryUsedBytes)),
+                avgMemoryPercent: average(filtered.map((snapshot) => snapshot.memoryPercent)),
+                avgPing: average(filtered.map((snapshot) => snapshot.pingMs)),
+                totalJank: calculateCounterTotal(filtered, "jankTotal"),
+                totalLongTasks: calculateCounterTotal(filtered, "longTaskTotal"),
+                batteryDrainRate: average(filtered.map((snapshot) => snapshot.batteryDrainRate)),
+                avgHealth: average(filtered.map((snapshot) => snapshot.healthScore))
+            };
+
+            const threats = buildThreatRows(filtered);
+            const score = buildScore(summary, threats.length);
+            const breakdown = buildBreakdownRows(filtered, periodKey);
+
+            return {
+                periodKey,
+                periodLabel: period.label,
+                breakdownLabel: period.breakdownLabel,
+                reportId: String(Math.floor(1000000000 + Math.random() * 9000000000)),
+                generatedAt: new Date().toISOString(),
+                generatedAtLabel: formatAuditTimestamp(new Date().toISOString()),
+                identity,
+                currentSnapshot,
+                filteredSnapshots: filtered,
+                insufficient,
+                events,
+                threats,
+                summary,
+                score,
+                breakdown,
+                browserSupportNote: detectBrowser(navigator.userAgent) === "Google Chrome"
+                    ? "Primary support: Chrome / Chromium with full performance.memory and print-to-PDF workflow."
+                    : "Partial support: some metrics may show N/A outside Chromium where browser APIs are limited."
+            };
+        }
+
+        function renderKeyValueRows(rows) {
+            return rows.map((row) => `
+                <tr>
+                    <th>${escapeHtml(row.label)}</th>
+                    <td class="mono">${escapeHtml(row.value)}</td>
+                </tr>
+            `).join("");
+        }
+
+        function renderDonut(label, percent, usedText, freeText, color) {
+            const safePercent = clamp(percent == null ? 0 : percent, 0, 100);
+            return `
+                <div class="audit-box">
+                    <div class="audit-box-title">${escapeHtml(label)}</div>
+                    <div class="audit-donut-wrap">
+                        <div class="audit-donut" style="--percent:${safePercent}; --fill:${color};">
+                            <div class="audit-donut-inner">
+                                <div class="audit-donut-value">${safePercent.toFixed(0)}%</div>
+                                <div class="audit-donut-label">Used</div>
+                            </div>
+                        </div>
+                        <div class="audit-note-text">
+                            <div><strong>Used:</strong> <span class="mono">${escapeHtml(usedText)}</span></div>
+                            <div><strong>Free:</strong> <span class="mono">${escapeHtml(freeText)}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setReportVisibility(visible, scrollIntoView = false) {
+            state.report.visible = visible;
+            const shell = document.getElementById("reportPreviewShell");
+            const previewButton = document.getElementById("previewReportButton");
+            if (!shell) {
+                return;
+            }
+            shell.classList.toggle("visible", visible);
+            shell.setAttribute("aria-hidden", visible ? "false" : "true");
+            if (previewButton) {
+                previewButton.textContent = visible ? "Close Preview" : "Preview Report";
+            }
+            if (visible && scrollIntoView) {
+                shell.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+
+        function buildReportHtml(report) {
+            const supportNotice = report.insufficient
+                ? `<div class="audit-callout"><strong>Insufficient history for full period — showing current session data.</strong> Stored history does not yet cover the full selected range, so this audit blends current telemetry with whatever local snapshots are currently available.</div>`
+                : "";
+
+            const eventRows = report.events.length
+                ? report.events.map((event) => `
+                    <tr>
+                        <td>${escapeHtml(event.type)}</td>
+                        <td class="mono">${escapeHtml(formatAuditTimestamp(event.timestamp))}</td>
+                        <td class="mono">${escapeHtml(event.sessionId || "N/A")}</td>
+                    </tr>
+                `).join("")
+                : `<tr><td colspan="3">No boot history stored for the selected period yet.</td></tr>`;
+
+            const threatRows = report.threats.length
+                ? report.threats.map((threat) => `
+                    <tr>
+                        <td>${escapeHtml(threat.threat)}</td>
+                        <td class="mono">${escapeHtml(threat.source)}</td>
+                        <td>${escapeHtml(threat.action)}</td>
+                    </tr>
+                `).join("")
+                : `<tr><td colspan="3">No threats detected — System Clean ✓</td></tr>`;
+
+            const breakdownRows = report.breakdown.length
+                ? report.breakdown.map((row) => `
+                    <tr>
+                        <td>${escapeHtml(row.label)}</td>
+                        <td class="mono">${formatNumber(row.avgCpuLoad, 1)}</td>
+                        <td class="mono">${formatNumber(row.avgFps, 1)}</td>
+                        <td class="mono">${formatMegabytes(row.peakMemoryBytes)}</td>
+                        <td class="mono">${formatNumber(row.avgPing, 1)}</td>
+                        <td class="mono">${formatNumber(row.avgHealth, 0)}</td>
+                    </tr>
+                `).join("")
+                : `<tr><td colspan="6">No breakdown rows are available yet.</td></tr>`;
+
+            const scoreClass = report.score.tier === "Excellent" ? "excellent" : report.score.tier === "Good" ? "good" : "critical";
+            const cpuPercent = report.summary.avgCpuLoad ?? 0;
+            const memoryPercent = report.summary.avgMemoryPercent ?? 0;
+
+            return `
+                <div class="audit-sheet">
+                    <div class="audit-header">
+                        <div>
+                            <div class="audit-title">SYSTEM GUARDIAN: ADVANCED SECURITY AUDIT</div>
+                            <div class="audit-subtitle">Professional browser-native runtime audit generated from live telemetry and local system history.</div>
+                        </div>
+                        <div class="audit-meta">
+                            <div class="audit-meta-row"><strong>Report ID</strong><span class="mono">${escapeHtml(report.reportId)}</span></div>
+                            <div class="audit-meta-row"><strong>Generated</strong><span class="mono">${escapeHtml(report.generatedAtLabel)}</span></div>
+                            <div class="audit-meta-row"><strong>Period</strong><span>${escapeHtml(report.periodLabel)}</span></div>
+                        </div>
+                    </div>
+                    ${supportNotice}
+                    <div class="audit-callout">${escapeHtml(report.browserSupportNote)}</div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 1 — Employee &amp; Account Data</div>
+                        <table class="audit-table">
+                            <tbody>
+                                ${renderKeyValueRows([
+                                    { label: "Name", value: report.identity.name },
+                                    { label: "Host ID", value: report.identity.hostId },
+                                    { label: "Department", value: "System Usage" },
+                                    { label: "Email", value: report.identity.email }
+                                ])}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 2 — System Specifications &amp; Status</div>
+                        <table class="audit-table">
+                            <tbody>
+                                ${renderKeyValueRows([
+                                    { label: "Browser / Platform", value: `${report.identity.browser} / ${report.identity.platform}` },
+                                    { label: "OS Detection", value: report.identity.os },
+                                    { label: "Screen Resolution + Pixel Ratio", value: `${report.identity.screen} @ ${report.identity.pixelRatio}x` },
+                                    { label: "CPU Logical Cores", value: report.identity.cores },
+                                    { label: "Device Memory", value: report.identity.deviceMemory },
+                                    { label: "Battery Level", value: report.identity.batteryLevel },
+                                    { label: "Battery Health %", value: report.identity.batteryHealth },
+                                    { label: "Charging Status", value: report.identity.batteryCharging },
+                                    { label: "Session Duration", value: report.identity.sessionDuration },
+                                    { label: "Lifetime Usage", value: report.identity.lifetimeUsage }
+                                ])}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 3 — System Event &amp; Boot History</div>
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Timestamp</th>
+                                    <th>Session</th>
+                                </tr>
+                            </thead>
+                            <tbody>${eventRows}</tbody>
+                        </table>
+                    </div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 4 — Malware &amp; Threat Injection Report</div>
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Threat Name</th>
+                                    <th>Source/Path</th>
+                                    <th>Action Taken</th>
+                                </tr>
+                            </thead>
+                            <tbody>${threatRows}</tbody>
+                        </table>
+                    </div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 5 — Resource Utilization &amp; Health Analysis</div>
+                        <table class="audit-table">
+                            <tbody>
+                                ${renderKeyValueRows([
+                                    { label: "Average CPU Load %", value: formatUnit(report.summary.avgCpuLoad, "%", 1) },
+                                    { label: "Average FPS", value: formatNumber(report.summary.avgFps, 1) },
+                                    { label: "Peak Memory Usage", value: formatMegabytes(report.summary.peakMemoryBytes) },
+                                    { label: "Average Ping Latency", value: formatUnit(report.summary.avgPing, " ms", 1) },
+                                    { label: "Total Jank Events Counted", value: String(report.summary.totalJank) },
+                                    { label: "Total Long Tasks Counted", value: String(report.summary.totalLongTasks) },
+                                    { label: "Battery Drain Rate", value: report.summary.batteryDrainRate == null ? "N/A" : `${formatNumber(report.summary.batteryDrainRate, 1)}% / hr` }
+                                ])}
+                            </tbody>
+                        </table>
+                        <div class="audit-grid">
+                            ${renderDonut("CPU Used vs Free", cpuPercent, formatUnit(cpuPercent, "%", 1), cpuPercent == null ? "N/A" : formatUnit(100 - cpuPercent, "%", 1), "#0f9d58")}
+                            ${renderDonut("Memory Used vs Free", memoryPercent, formatUnit(memoryPercent, "%", 1), memoryPercent == null ? "N/A" : formatUnit(100 - memoryPercent, "%", 1), "#2563eb")}
+                        </div>
+                        <div style="margin-top:14px;">
+                            <table class="audit-table">
+                                <thead>
+                                    <tr>
+                                        <th>${escapeHtml(report.breakdownLabel)} Period</th>
+                                        <th>Avg CPU %</th>
+                                        <th>Avg FPS</th>
+                                        <th>Peak Memory</th>
+                                        <th>Avg Ping</th>
+                                        <th>Avg Health</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${breakdownRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="audit-section">
+                        <div class="audit-section-title">Section 6 — Aggregate Health Score</div>
+                        <div class="audit-box" style="margin-bottom: 14px;">
+                            <div class="audit-score ${scoreClass}">Final Score: ${report.score.finalScore}/100 — ${escapeHtml(report.score.tier)}</div>
+                            <div class="audit-note-text" style="margin-top:10px;">${escapeHtml(report.score.verdict)}</div>
+                        </div>
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Max Points</th>
+                                    <th>Earned Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${report.score.parts.map((part) => `
+                                    <tr>
+                                        <td>${escapeHtml(part.label)}</td>
+                                        <td class="mono">${part.max}</td>
+                                        <td class="mono">${part.value == null ? "N/A" : part.value.toFixed(1)}</td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="audit-footer">This is an AI-generated professional security audit. Confidential and Proprietary.</div>
+                </div>
+            `;
+        }
+
+        function renderReportPreview(report, reveal = true) {
+            state.report.data = report;
+            document.getElementById("reportPreview").innerHTML = buildReportHtml(report);
+            setText("reportNotice", report.insufficient
+                ? "Insufficient history for full period — showing current session data blended with available local history."
+                : `Previewing ${report.periodLabel} using stored browser telemetry history and the latest live snapshot.`);
+            if (reveal) {
+                setReportVisibility(true, true);
+            }
+        }
+
+        function escapeCsv(value) {
+            const stringValue = String(value ?? "");
+            return /[",\n]/.test(stringValue) ? `"${stringValue.replace(/"/g, '""')}"` : stringValue;
+        }
+
+        function downloadCsv(report) {
+            const rows = [];
+            rows.push(["SYSTEM GUARDIAN: ADVANCED SECURITY AUDIT"]);
+            rows.push(["Report ID", report.reportId]);
+            rows.push(["Generated", report.generatedAtLabel]);
+            rows.push(["Period", report.periodLabel]);
+            rows.push([]);
+            rows.push(["Section 1 — Employee & Account Data"]);
+            rows.push(["Name", report.identity.name]);
+            rows.push(["Host ID", report.identity.hostId]);
+            rows.push(["Department", "System Usage"]);
+            rows.push(["Email", report.identity.email]);
+            rows.push([]);
+            rows.push(["Section 2 — System Specifications & Status"]);
+            rows.push(["Browser / Platform", `${report.identity.browser} / ${report.identity.platform}`]);
+            rows.push(["OS Detection", report.identity.os]);
+            rows.push(["Screen Resolution + Pixel Ratio", `${report.identity.screen} @ ${report.identity.pixelRatio}x`]);
+            rows.push(["CPU Logical Cores", report.identity.cores]);
+            rows.push(["Device Memory", report.identity.deviceMemory]);
+            rows.push(["Battery Level", report.identity.batteryLevel]);
+            rows.push(["Battery Health %", report.identity.batteryHealth]);
+            rows.push(["Charging Status", report.identity.batteryCharging]);
+            rows.push(["Session Duration", report.identity.sessionDuration]);
+            rows.push(["Lifetime Usage", report.identity.lifetimeUsage]);
+            rows.push([]);
+            rows.push(["Section 3 — System Event & Boot History"]);
+            rows.push(["Event", "Timestamp", "Session"]);
+            report.events.forEach((event) => rows.push([event.type, formatAuditTimestamp(event.timestamp), event.sessionId || "N/A"]));
+            rows.push([]);
+            rows.push(["Section 4 — Malware & Threat Injection Report"]);
+            rows.push(["Threat Name", "Source/Path", "Action Taken"]);
+            if (report.threats.length) {
+                report.threats.forEach((threat) => rows.push([threat.threat, threat.source, threat.action]));
+            } else {
+                rows.push(["No threats detected — System Clean ✓", "", ""]);
+            }
+            rows.push([]);
+            rows.push(["Section 5 — Resource Utilization & Health Analysis"]);
+            rows.push(["Average CPU Load %", formatUnit(report.summary.avgCpuLoad, "%", 1)]);
+            rows.push(["Average FPS", formatNumber(report.summary.avgFps, 1)]);
+            rows.push(["Peak Memory Usage MB", report.summary.peakMemoryBytes == null ? "N/A" : (report.summary.peakMemoryBytes / (1024 * 1024)).toFixed(1)]);
+            rows.push(["Average Ping Latency ms", formatUnit(report.summary.avgPing, " ms", 1)]);
+            rows.push(["Total Jank Events Counted", report.summary.totalJank]);
+            rows.push(["Total Long Tasks Counted", report.summary.totalLongTasks]);
+            rows.push(["Battery Drain Rate %/hr", report.summary.batteryDrainRate == null ? "N/A" : formatNumber(report.summary.batteryDrainRate, 1)]);
+            rows.push([]);
+            rows.push([`${report.breakdownLabel} Breakdown`]);
+            rows.push(["Period", "Avg CPU %", "Avg FPS", "Peak Memory MB", "Avg Ping ms", "Avg Health"]);
+            report.breakdown.forEach((row) => {
+                rows.push([
+                    row.label,
+                    formatNumber(row.avgCpuLoad, 1),
+                    formatNumber(row.avgFps, 1),
+                    row.peakMemoryBytes == null ? "N/A" : (row.peakMemoryBytes / (1024 * 1024)).toFixed(1),
+                    formatNumber(row.avgPing, 1),
+                    formatNumber(row.avgHealth, 0)
+                ]);
+            });
+            rows.push([]);
+            rows.push(["Section 6 — Aggregate Health Score"]);
+            rows.push(["Final Score", `${report.score.finalScore}/100`]);
+            rows.push(["Tier", report.score.tier]);
+            rows.push(["Verdict", report.score.verdict]);
+            rows.push(["Category", "Max Points", "Earned Points"]);
+            report.score.parts.forEach((part) => rows.push([part.label, part.max, part.value == null ? "N/A" : part.value.toFixed(1)]));
+
+            const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `system-guardian-audit-${report.periodKey}-${report.reportId}.csv`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateReport({ printAfter = false, csvAfter = false, revealPreview = false } = {}) {
+            const report = prepareReportData(state.report.activePeriod);
+            renderReportPreview(report, revealPreview);
+            if (csvAfter) {
+                downloadCsv(report);
+            }
+            if (printAfter) {
+                requestAnimationFrame(() => window.print());
+            }
+        }
+
+        function bindReportControls() {
+            loadReportProfile();
+            setActivePeriod(state.report.activePeriod);
+            setReportVisibility(false);
+
+            document.getElementById("reportName").addEventListener("input", () => {
+                saveReportProfile();
+            });
+            document.getElementById("reportEmail").addEventListener("input", () => {
+                saveReportProfile();
+            });
+
+            document.querySelectorAll(".period-button").forEach((button) => {
+                button.addEventListener("click", () => {
+                    setActivePeriod(button.dataset.period);
+                    setText("reportNotice", "Preview is hidden until you click Preview Report. Period changes are saved and will be used for the next report.");
+                    if (state.report.visible) {
+                        generateReport({ revealPreview: true });
+                    }
+                });
+            });
+
+            document.getElementById("previewReportButton").addEventListener("click", () => {
+                if (state.report.visible) {
+                    setReportVisibility(false);
+                    setText("reportNotice", "Preview closed. Click Preview Report whenever you want to open the audit card again.");
+                    return;
+                }
+                generateReport({ revealPreview: true });
+            });
+            document.getElementById("downloadPdfButton").addEventListener("click", () => {
+                generateReport({ printAfter: true, revealPreview: state.report.visible });
+            });
+            document.getElementById("downloadCsvButton").addEventListener("click", () => {
+                generateReport({ csvAfter: true, revealPreview: state.report.visible });
+            });
+        }
+
+        function handlePageExit() {
+            if (state.pageExitHandled) {
+                return;
+            }
+            state.pageExitHandled = true;
+            syncSnapshot(true);
+            flushLifetimeUsage();
+            logSystemEvent("System Shutdown");
+        }
+
+        function startRefreshLoops() {
+            logSystemEvent("System Start");
+            refreshDashboard();
+            measurePing();
+            syncSnapshot(true);
+
+            window.setInterval(refreshDashboard, REFRESH_MS);
+            window.setInterval(measurePing, PING_MS);
+            window.setInterval(() => syncSnapshot(false), SNAPSHOT_MS);
+            window.addEventListener("resize", drawSparkline);
+            window.addEventListener("pagehide", handlePageExit);
+            window.addEventListener("beforeunload", handlePageExit);
+        }
+
+        initClock();
+        initStaticDetails();
+        initCpuWorker();
+        initFrameTracking();
+        initLongTaskObserver();
+        initMemoryTracking();
+        bindReportControls();
+        initBatteryTracking().finally(startRefreshLoops);
+    </script>
+</body>
+</html>

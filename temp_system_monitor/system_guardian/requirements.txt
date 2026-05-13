@@ -1,0 +1,19 @@
+# System Guardian - All Parts Requirements
+# Install: pip install -r requirements.txt
+
+# Part 1: Backend Core
+flask==3.0.0
+flask-socketio==5.3.6
+python-socketio==5.10.0
+python-engineio==4.8.0
+
+# Part 2: AI Agent
+psutil==5.9.6
+fpdf==1.7.2
+matplotlib==3.8.2
+numpy==1.26.2
+pillow==10.1.0
+
+# Optional: For production deployment
+eventlet==0.33.3
+gunicorn==21.2.0
