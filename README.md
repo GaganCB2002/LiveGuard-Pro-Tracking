@@ -1,6 +1,6 @@
-# 🌌 WorkSphere: Enterprise-Grade Activity Intelligence
+# 🌌 LiveGuard Pro: Enterprise-Grade Activity Intelligence
 
-WorkSphere is a high-performance workstation monitoring agent and productivity analytics platform. Built for zero-latency tracking and unbreakable data integrity, it bridges the gap between low-level system events and high-level executive insights.
+WorkSphere (now LiveGuard Pro) is a high-performance workstation monitoring agent and productivity analytics platform. Built for zero-latency tracking and unbreakable data integrity, it bridges the gap between low-level system events and high-level executive insights.
 
 ---
 
@@ -91,4 +91,4 @@ This script initializes the monitoring agent in the background and spins up the 
 
 For advanced configuration, refer to the `apps/dashboard/backend/API.md` for telemetry endpoints or modify `apps/agent/main.js` to adjust polling intervals.
 
-**Developed by Gagan CB (WorkSphere Enterprise Solutions)**
+**Developed by Gagan CB (LiveGuard Pro Enterprise Solutions)**
