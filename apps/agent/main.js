@@ -1,10 +1,11 @@
-const { app, Tray, Menu, BrowserWindow, ipcMain } = require('electron');
+const { app, Tray, Menu, BrowserWindow, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const os = require('os');
 
 let tray = null;
 let trackingInterval = null;
+let locationInterval = null;
 let currentApp = null;
 let currentAppStartTime = Date.now();
 let osLoginTime = new Date().toISOString();
@@ -47,14 +48,13 @@ function checkDailyReset() {
 
 const getLoginTime = () => {
     try {
-        const cmd = 'powershell -Command "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString(\'yyyy-MM-dd HH:mm:ss\')"';
-        exec(cmd, (err, stdout) => {
-            if (!err) osLoginTime = stdout.trim();
-        });
-    } catch(e) {}
+        const os = require('os');
+        const bootTime = new Date(Date.now() - os.uptime() * 1000);
+        osLoginTime = bootTime.toISOString().replace('T', ' ').split('.')[0];
+    } catch(e) {
+        osLoginTime = new Date().toISOString();
+    }
 };
-
-const { nativeImage } = require('electron');
 
 function createTray() {
     let trayIcon;
@@ -69,7 +69,7 @@ function createTray() {
     tray = new Tray(trayIcon);
     tray.setToolTip('WorkSphere Active Tracking');
     tray.setContextMenu(Menu.buildFromTemplate([
-        { label: 'Tracking: Active (Real Data Only)', enabled: false },
+        { label: 'Tracking: Active', enabled: false },
         { type: 'separator' },
         { label: 'Exit', click: () => app.quit() }
     ]));
@@ -85,13 +85,129 @@ process.on('uncaughtException', (err) => {
     }) + '\n');
 });
 
+// Activity Monitoring State
 let isBreak = false;
 let employeeId = 'EMP-' + require('os').userInfo().username.toUpperCase();
 let lastTrackedTitle = '';
+const deviceId = require('os').hostname();
+
+// Global State
+let lastKnownLocation = { latitude: 0, longitude: 0, network: 'Unknown', accuracy: 0 };
+
+// --- Multi-Signal Location Verification ---
+async function getMultiSignalLocation() {
+    return new Promise((resolve) => {
+        const { exec } = require('child_process');
+        const scriptPath = path.join(__dirname, 'get_gps.ps1');
+        
+        // Increased timeout for better hardware lock potential
+        exec(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`, { timeout: 30000 }, async (error, stdout) => {
+            if (error || !stdout || stdout.trim() === 'FAILED') {
+                console.warn('[Location] Hardware/Network acquisition failed.');
+                resolve(null);
+                return;
+            }
+            
+            const parts = stdout.trim().split('|');
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+            const acc = parseFloat(parts[2]);
+            const network = parts[3] || 'Unknown Network';
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                resolve(null);
+                return;
+            }
+
+            // --- SMART FILTERING ---
+            let isTrustworthy = false;
+            let source = 'Unknown';
+            
+            if (acc < 500) {
+                isTrustworthy = true;
+                source = 'Hardware (High)';
+            } else if (acc < 2500) {
+                isTrustworthy = true;
+                source = 'Hardware (Low)';
+            } else if (acc < 35000) {
+                isTrustworthy = true;
+                source = 'Network (Regional)';
+            }
+
+            if (!isTrustworthy) {
+                console.warn(`[Location] Signal Rejected: Accuracy ±${Math.round(acc/1000)}km too low.`);
+                resolve(null);
+                return;
+            }
+            
+            console.log(`[Location] Verified: ${lat.toFixed(4)}, ${lng.toFixed(4)} | Source: ${source} | Net: ${network}`);
+            resolve({ 
+                latitude: lat, 
+                longitude: lng, 
+                accuracy: acc, 
+                network: network, 
+                city: acc < 5000 ? 'Verified Hardware' : 'Regional ISP',
+                source: source
+            });
+        });
+    });
+}
+
+async function sendLocationUpdate(loc) {
+    if (!loc) return;
+
+    try {
+        const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+        const payload = {
+            deviceId,
+            employeeId,
+            eventType: 'LOCATION_UPDATE',
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            accuracy: loc.accuracy,
+            network: loc.network || 'Unknown Network',
+            city: loc.city || 'Hardware Lock',
+            timestamp: new Date().toISOString()
+        };
+
+        // 1. Send to Telemetry Server
+        await fetch('http://localhost:4000/api/telemetry/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        // 2. Log to Local Evidence File for Reporting
+        fs.appendFileSync(LOG_PATH, JSON.stringify(payload) + '\n');
+    } catch (e) {
+        console.error('Telemetry Sync Error:', e.message);
+    }
+}
+
+function startGPSPolling() {
+    locationInterval = setInterval(async () => {
+        if (!isOfficeHours()) return;
+        const loc = await getMultiSignalLocation();
+        if (loc) {
+            lastKnownLocation = loc;
+            await sendLocationUpdate(loc);
+        }
+    }, 10000);
+}
+
+
 
 function startMonitoring() {
     getLoginTime();
     
+    // Global State
+    let lastKnownLocation = { latitude: 0, longitude: 0, network: 'Scanning Network...', accuracy: 0 };
+    
+    // Initial Location Lock
+    getMultiSignalLocation().then(loc => {
+        if (loc) lastKnownLocation = loc;
+    });
+
     // Log explicit LOGIN event
     fs.appendFileSync(LOG_PATH, JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -99,12 +215,15 @@ function startMonitoring() {
         eventType: 'LOGIN',
         loginTime: osLoginTime,
         app: 'System',
-        title: 'User Login Authenticated'
+        title: 'User Login Authenticated',
+        latitude: lastKnownLocation.latitude,
+        longitude: lastKnownLocation.longitude,
+        network: lastKnownLocation.network
     }) + '\n');
     
     let activeWinModule = null;
     import('active-win').then(m => activeWinModule = m).catch(e => console.error('Module Load Error:', e));
-    
+
     trackingInterval = setInterval(async () => {
         let systemData = { Name: 'Idle', MainWindowTitle: 'No Focused Window' };
         
@@ -122,14 +241,6 @@ function startMonitoring() {
                     title = title.replace(/ - Google Chrome$| - Microsoft​ Edge$| - Work - Microsoft​ Edge$| - Mozilla Firefox$| - Brave$/, '');
                 }
                 systemData = { Name: appName, MainWindowTitle: title || appName };
-            } else {
-                // Ultra-Fast Fallback
-                const { execSync } = require('child_process');
-                const psCmd = '[void][System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms"); $h=(Add-Type -MemberDefinition "[DllImport(\\"user32.dll\\")] public static extern IntPtr GetForegroundWindow();" -Name "W" -PassThru)::GetForegroundWindow(); (Get-Process | Where {$_.MainWindowHandle -eq $h}).Name';
-                try {
-                    const psName = execSync(`powershell -command "${psCmd}"`, { encoding: 'utf8', timeout: 300 }).trim();
-                    if (psName) systemData = { Name: psName, MainWindowTitle: 'System Task' };
-                } catch(e) {}
             }
         } catch (e) {
             console.error('Pulse Error:', e.message);
@@ -192,7 +303,10 @@ function startMonitoring() {
                 eventType: isBreak ? 'ON_BREAK' : 'system_snapshot',
                 keystrokeVelocity: isBreak || isSystemIdle ? 0 : Math.floor(Math.random() * 80) + 20,
                 mouseClicks: isBreak || isSystemIdle ? 0 : Math.floor(Math.random() * 5),
-                focused: !isSystemIdle
+                focused: !isSystemIdle,
+                latitude: lastKnownLocation.latitude,
+                longitude: lastKnownLocation.longitude,
+                network: lastKnownLocation.network
             };
             
             fs.appendFileSync(LOG_PATH, JSON.stringify(activity) + '\n');
@@ -215,5 +329,5 @@ app.on('before-quit', () => {
 app.whenReady().then(() => {
     createTray();
     startMonitoring();
-    new BrowserWindow({ show: false });
+    startGPSPolling();
 });

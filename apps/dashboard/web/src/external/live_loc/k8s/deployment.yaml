@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liveguard-api
+  namespace: liveguard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: liveguard-api
+  template:
+    metadata:
+      labels:
+        app: liveguard-api
+    spec:
+      containers:
+      - name: api
+        image: liveguard/api:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: liveguard-config

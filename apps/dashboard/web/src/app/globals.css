@@ -40,3 +40,50 @@ body {
   height: 300px;
   width: 100%;
 }
+
+/* LiveGuard Pro Map Styles */
+.custom-marker-div {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes markerPulse {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+.custom-marker {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #09090b !important;
+  color: #fafafa !important;
+  border-radius: 16px !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: #09090b !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+}
+
+.leaflet-container {
+  background: #09090b !important;
+}
+

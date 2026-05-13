@@ -66,7 +66,10 @@ export async function GET() {
                     title: p.title,
                     startTime: p.timestamp,
                     endTime: p.timestamp,
-                    duration: 0
+                    duration: 0,
+                    latitude: p.latitude || 0,
+                    longitude: p.longitude || 0,
+                    network: p.network || 'Unknown'
                 };
             } else {
                 currentSession.endTime = p.timestamp;

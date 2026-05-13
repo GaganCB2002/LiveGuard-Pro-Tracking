@@ -17,9 +17,21 @@ import {
   Search,
   User,
   Shield,
-  Menu
+  Menu,
+  Map as MapIcon,
+  Navigation
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { generateEnterpriseReport } from './utils/reportEngine';
+
+const LiveTrackingMap = dynamic(() => import('./components/LiveTrackingMap'), { 
+  ssr: false,
+  loading: () => <div style={{ height: '600px', background: '#18181b', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a' }}>Initializing High-Precision Map Engine...</div>
+});
+
+const SystemGuardian = dynamic(() => import('./components/SystemGuardian'), { ssr: false });
+
+
 import { 
   XAxis, 
   YAxis, 
@@ -273,6 +285,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     setMounted(true);
+    
     const fetchTelemetry = async () => {
       try {
         const res = await fetch('/api/telemetry');
@@ -281,12 +294,15 @@ export default function Dashboard() {
           setTelemetry(data);
         }
       } catch (e) {
-        console.error('Fetch Error:', e);
+        console.error('Telemetry Fetch Error:', e);
       }
     };
 
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 200);
+    const interval = setInterval(() => {
+      fetchTelemetry();
+    }, 1000); // 1 second high-speed polling
+
     return () => clearInterval(interval);
   }, []);
 
@@ -427,7 +443,9 @@ export default function Dashboard() {
           <SidebarLink active={currentTab === 'Overview'} icon={<Monitor size={18} />} label={sidebarCollapsed ? "" : "Overview"} onClick={() => setCurrentTab('Overview')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'Activity'} icon={<Activity size={18} />} label={sidebarCollapsed ? "" : "Activity"} onClick={() => setCurrentTab('Activity')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'Analytics'} icon={<BarChart3 size={18} />} label={sidebarCollapsed ? "" : "Analytics"} onClick={() => setCurrentTab('Analytics')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Live Tracking'} icon={<MapIcon size={18} color="#10b981" />} label={sidebarCollapsed ? "" : "Live Tracking"} onClick={() => setCurrentTab('Live Tracking')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'Reports'} icon={<FileText size={18} />} label={sidebarCollapsed ? "" : "Reports"} onClick={() => setCurrentTab('Reports')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'System Audit'} icon={<Shield size={18} color="#3b82f6" />} label={sidebarCollapsed ? "" : "System Audit"} onClick={() => setCurrentTab('System Audit')} collapsed={sidebarCollapsed} />
         </nav>
 
         {/* Footer Section */}
@@ -698,8 +716,25 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          )}          {currentTab === 'Live Tracking' && (
+            <div style={{ height: 'calc(100vh - 150px)', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fafafa', letterSpacing: '-0.02em' }}>Real-Time GPS Intelligence</h2>
+                  <p style={{ color: '#71717a', fontSize: '0.9rem' }}>Monitoring active devices and live movement patterns across the enterprise network.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div style={{ padding: '0.5rem 1rem', background: '#18181b', borderRadius: '8px', border: '1px solid #27272a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Navigation size={14} color="#10b981" />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Active Signals: Live</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ flex: 1, minHeight: '500px' }}>
+                <LiveTrackingMap />
+              </div>
+            </div>
           )}
- 
           {currentTab === 'Reports' && (
             <div id="report-tab-view" style={{ minHeight: 'calc(100vh - 120px)', width: '100%', padding: '0 1rem' }}>
               {/* Premium Report Header */}
@@ -729,13 +764,14 @@ export default function Dashboard() {
                   <button 
                     onClick={() => {
                       const csv = [
-                        ['Start Time', 'End Time', 'Duration', 'Application', 'Window/Tab Title'],
+                        ['Start Time', 'End Time', 'Duration', 'Application', 'Window/Tab Title', 'Location'],
                         ...(telemetry.timeline || []).map((t: any) => [
                           new Date(t.startTime).toLocaleTimeString(),
                           new Date(t.endTime).toLocaleTimeString(),
                           formatDuration(t.duration),
                           t.app,
-                          t.title
+                          t.title,
+                          t.latitude && t.latitude !== 0 ? `${t.latitude}, ${t.longitude}` : (t.network && t.network !== 'Unknown' ? t.network : 'WorkSphere Secure Node')
                         ])
                       ].map(e => e.join(",")).join("\n");
                       const blob = new Blob([csv], { type: 'text/csv' });
@@ -903,6 +939,7 @@ export default function Dashboard() {
                             <th style={{ padding: '1rem', textAlign: 'left', color: '#0f172a', fontSize: '0.75rem', fontWeight: 900 }}>TIME OUT</th>
                             <th style={{ padding: '1rem', textAlign: 'left', color: '#0f172a', fontSize: '0.75rem', fontWeight: 900 }}>APP / SERVICE</th>
                             <th style={{ padding: '1rem', textAlign: 'left', color: '#0f172a', fontSize: '0.75rem', fontWeight: 900 }}>TAB / WINDOW TITLE</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', color: '#0f172a', fontSize: '0.75rem', fontWeight: 900 }}>LOCATION</th>
                             <th style={{ padding: '1rem', textAlign: 'right', color: '#0f172a', fontSize: '0.75rem', fontWeight: 900 }}>DURATION</th>
                           </tr>
                         </thead>
@@ -919,6 +956,9 @@ export default function Dashboard() {
                                 </div>
                               </td>
                               <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', maxWidth: '300px' }}>{t.title}</td>
+                              <td style={{ padding: '1rem', fontSize: '0.75rem', color: '#3b82f6', fontWeight: 600 }}>
+                                {t.latitude && t.latitude !== 0 ? `${t.latitude.toFixed(3)}, ${t.longitude.toFixed(3)}` : (t.network && t.network !== 'Unknown' ? t.network : 'WorkSphere Secure Node')}
+                              </td>
                               <td style={{ padding: '1rem', textAlign: 'right' }}>
                                 <span style={{ background: '#000', color: '#fff', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 950 }}>{formatDuration(t.duration)}</span>
                               </td>
@@ -930,6 +970,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+          
+          {currentTab === 'System Audit' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <SystemGuardian />
             </div>
           )}
         </div>

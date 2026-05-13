@@ -1,0 +1,26 @@
+# Node
+node_modules/
+dist/
+build/
+.env
+.env.local
+.DS_Store
+
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+.idea/
+*.iml
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Local Config
+tsconfig.json
+run_all.bat

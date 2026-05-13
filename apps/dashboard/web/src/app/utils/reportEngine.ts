@@ -258,12 +258,13 @@ export const generateEnterpriseReport = async (data: ReportData) => {
 
   autoTable(doc, {
     startY: 35,
-    head: [['TIME IN', 'TIME OUT', 'APP / SERVICE', 'TAB / WINDOW TITLE', 'DURATION']],
+    head: [['TIME IN', 'TIME OUT', 'APP / SERVICE', 'TAB / WINDOW TITLE', 'LOCATION', 'DURATION']],
     body: timelineData.map((t: any) => [
       new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       new Date(t.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       t.app,
-      ((t.title || '') as string).substring(0, 45) + (((t.title || '') as string).length > 45 ? '...' : ''),
+      ((t.title || '') as string).substring(0, 30) + (((t.title || '') as string).length > 30 ? '...' : ''),
+      t.latitude && t.latitude !== 0 ? `${t.latitude.toFixed(3)}, ${t.longitude.toFixed(3)}` : (t.network && t.network !== 'Unknown' ? t.network : 'WorkSphere Secure Node'),
       formatDuration(t.duration)
     ]),
     theme: 'grid',
@@ -271,11 +272,51 @@ export const generateEnterpriseReport = async (data: ReportData) => {
     bodyStyles: { fontSize: 6.5, cellPadding: 2.5 },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 30, fontStyle: 'bold' },
-      3: { cellWidth: 70 },
-      4: { cellWidth: 22, halign: 'right' as const, fontStyle: 'bold' }
+      0: { cellWidth: 20 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 25, fontStyle: 'bold' },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 35, fontSize: 6 },
+      5: { cellWidth: 20, halign: 'right' as const, fontStyle: 'bold' }
+    },
+    margin: { left: margin, right: margin }
+  });
+
+  // ============================
+  // PAGE 4: GEOSPATIAL LOG
+  // ============================
+  doc.addPage();
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Geospatial Presence Log', margin, 20);
+
+  const locationEvents = (data.allEvents || [])
+    .filter(e => e.eventType === 'LOCATION_UPDATE' || e.latitude)
+    .slice(0, 50);
+
+  autoTable(doc, {
+    startY: 35,
+    head: [['TIMESTAMP', 'LATITUDE', 'LONGITUDE', 'NETWORK / NODE', 'ACCURACY']],
+    body: locationEvents.map((e: any) => [
+      new Date(e.timestamp).toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      e.latitude.toFixed(5),
+      e.longitude.toFixed(5),
+      e.network || 'Ethernet/LTE',
+      `±${Math.round(e.accuracy)}m`
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [59, 130, 246], fontSize: 7, fontStyle: 'bold', cellPadding: 3 },
+    bodyStyles: { fontSize: 6.5, cellPadding: 2.5 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 60, fontStyle: 'bold' },
+      4: { cellWidth: 30, halign: 'right' as const }
     },
     margin: { left: margin, right: margin },
     didDrawPage: () => {
