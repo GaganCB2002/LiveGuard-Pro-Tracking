@@ -78,12 +78,52 @@ This script initializes the monitoring agent in the background and spins up the 
 
 ---
 
-## 💎 Key Performance Features
+## 🛡️ Enterprise-Grade Security & Monitoring Features
 
-*   **⚡ Sub-Second Latency**: Detects focus changes in under 500ms with negligible CPU overhead.
-*   **🛡️ Data Durability**: Every heartbeat is flushed to a JSONL log, preventing data loss from unexpected power-offs.
-*   **📊 Intelligent Categorization**: Automatically distinguishes between "Deep Work" (IDEs, Spreadsheets) and "Communication" (Slack, Teams).
-*   **📑 Audit-Ready Reports**: Generate high-fidelity PDF reports with embedded charts and granular time logs.
+### **1. Multi-User Fleet Intelligence**
+*   **Real-Time Map Synchronization**: Track "N" number of concurrent users via verified hardware GPS sensors.
+*   **Signal Integrity**: Distinguishes between local system signals and remote fleet nodes with sub-meter precision.
+*   **Active Node Discovery**: Automatically populates the fleet sidebar with all currently online hardware nodes.
+
+### **2. Cybersecurity & Malware Audit Suite**
+*   **Deep-Kernel Malware Scan**: Scans active process signatures for viruses (e.g., Trojans, Miners, Exploits).
+*   **Automatic Rectification**: Identified threats are instantly quarantined and "RECTIFIED" in the dashboard.
+*   **Live Signal Stream**: A millisecond-precision terminal console showing every inbound telemetry packet.
+
+### **3. Hardware Integrity & Visual Analytics**
+*   **GPU Telemetry Engine**: Live monitoring of Dedicated vs. Integrated graphics (VRAM, Load, Temperature).
+*   **Resource Allocation Pie Charts**: Visual real-time breakdown of CPU, Memory, and GPU pressure.
+*   **High-Fidelity PDF Forensics**: Audit-ready reports including security clearance logs and hardware stress history.
+
+---
+
+## 📑 Operational Task Guide
+
+To fully utilize the new WorkSphere (LiveGuard Pro) capabilities, follow these detailed tasks:
+
+### **Task A: Live Fleet Surveillance**
+1.  Navigate to the **Live Tracking** tab in the Sidebar.
+2.  Verify the **Active Node Count** in the header.
+3.  Click on any node in the **Fleet Intelligence** sidebar to instantly focus the high-precision map on that user's hardware coordinates.
+4.  Toggle between **Satellite** and **Street** views for tactical visibility.
+
+### **Task B: Full System Security Audit**
+1.  Select the **System Audit** tab.
+2.  Click **"Run Full Audit"** to initiate the multi-stage scan.
+3.  Monitor the **Live Telemetry Signal Stream** (Terminal) at the bottom to see raw sensor data pulses.
+4.  If a threat is detected, observe the **Toast Notification** and wait for the **Automatic Rectification** protocol to isolate the virus.
+
+### **Task C: Hardware Performance Analysis**
+1.  Review the **Resource Allocation Pie Chart** to identify hardware bottlenecks.
+2.  Check the **GPU Acceleration** card for live VRAM and temperature metrics.
+3.  Observe the **FPS / Lag Detection** gauge to ensure high-performance UI rendering.
+
+### **Task D: Exporting Evidence-Grade Reports**
+1.  Go to the **Reports** tab.
+2.  Click **Export Audit Logs (PDF)**.
+3.  The generated report now includes:
+    *   **Page 5**: Hardware Integrity Audit (Full system diagnostics).
+    *   **Page 6**: Security & Malware Audit (Rectified threats log).
 
 ---
 
