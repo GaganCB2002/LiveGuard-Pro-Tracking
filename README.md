@@ -22,26 +22,34 @@ WorkSphere (now LiveGuard Pro) is a high-performance workstation monitoring agen
 
 ---
 
-## 📁 Project Architecture
+## 📁 Project Architecture & Technical Structure
 
-```text
-worksphere/
-├── apps/
-│   ├── agent/                 # System-Level Tracking Agent
-│   │   ├── main.js            # Core lifecycle & telemetry logic
-│   │   ├── package.json       # Agent dependencies
-│   │   └── activity_log.jsonl # Durable activity database
-│   └── dashboard/
-│       ├── web/               # Next.js Analytics Portal
-│       │   ├── src/app/       # Telemetry APIs & UI Pages
-│       │   ├── public/        # Asset & Report Templates
-│       │   └── package.json    # Dashboard dependencies
-│       └── backend/           # Standalone Reporting Scripts
-│           ├── report_engine.js # Automated report generator
-│           └── API.md         # Internal API documentation
-├── run_all.bat                # Unified System Launcher
-└── README.md                  # Root Documentation
-```
+The WorkSphere (LiveGuard Pro) ecosystem is partitioned into three specialized environments to ensure high-performance telemetry and modular security.
+
+### **1. 🖥️ apps/agent (Forensic Monitoring Engine)**
+The desktop agent is the "Sensor Layer" of the platform, executing natively on the workstation.
+*   **`main.js`**: The central orchestrator. It manages the Electron lifecycle, registers **IPC Handlers** for system audits, and executes the **Forensic Malware Scanner**.
+*   **`get_gps.ps1`**: A precision PowerShell script that interfaces with the Windows Location API to pull hardware-verified coordinates.
+*   **`activity_log.jsonl`**: A durable, line-based database that records every window switch, application transition, and security event with millisecond precision.
+
+### **2. 📊 apps/dashboard/web (Intelligence Analytics Portal)**
+The modern Next.js frontend responsible for visualizing data and managing biometric access.
+*   **`src/app/page.tsx`**: The core application shell. Implements the **Biometric Login Portal** and the unified navigation system.
+*   **`src/app/components/`**:
+    *   **`SystemGuardian.tsx`**: The "Command Center" for cybersecurity. Triggers the agent's forensic engine and displays real-time malware rectification logs.
+    *   **`LiveTrackingMap.tsx`**: An optimized Leaflet.js implementation for real-time fleet surveillance.
+    *   **`SystemMonitor.tsx`**: High-fidelity hardware telemetry gauges (CPU, GPU, RAM, Network).
+*   **`src/app/api/`**: Serverless routes for session management (Login/Logout) and telemetry ingestion.
+
+### **3. 🔀 apps/dashboard/backend (Telemetry Hub & Reporting)**
+The backbone of the platform, facilitating real-time communication.
+*   **`server.js`**: A high-performance Socket.io and Express server. It broadcasts real-time location updates and security threats from the agent to all connected dashboards.
+*   **`report_engine.js`**: The enterprise reporting core. It aggregates historical JSONL logs into audit-ready PDF forensic reports.
+*   **`API.md`**: Detailed documentation for the telemetry protocol and location ingestion endpoints.
+
+### **4. 🛠️ Root Utilities**
+*   **`run_all.bat`**: The automated system launcher. Orchestrates the simultaneous startup of the backend hub, the web portal, and the forensic agent.
+*   **`package.json`**: Root workspace configuration for monorepo-style dependency management.
 
 ---
 
