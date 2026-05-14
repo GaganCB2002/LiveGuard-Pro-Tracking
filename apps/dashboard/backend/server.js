@@ -200,6 +200,35 @@ app.post('/api/telemetry/location', async (req, res) => {
     res.status(200).json({ status: 'received' });
 });
 
+// --- Security Intelligence API ---
+app.post('/api/telemetry/security', async (req, res) => {
+    const { employeeId, eventType, severity, threatName, filePath, status, notifiedIT } = req.body;
+
+    if (!threatName || !filePath) {
+        return res.status(400).json({ error: 'Invalid security packet' });
+    }
+
+    const threatData = {
+        timestamp: new Date().toISOString(),
+        employeeId,
+        eventType,
+        severity,
+        threatName,
+        filePath,
+        status,
+        notifiedIT
+    };
+
+    // Broadcast to dashboard
+    io.emit('system_update', {
+        type: 'threat_alert',
+        data: threatData
+    });
+
+    console.log(`[SECURITY] High-priority threat broadcasted: ${threatName} at ${filePath}`);
+    res.status(200).json({ status: 'broadcasted' });
+});
+
 // --- Traccar/OsmAnd Protocol Compatibility ---
 // Allows connection with professional GPS hardware models
 app.get('/api/telemetry/traccar', async (req, res) => {

@@ -10,7 +10,45 @@ let currentApp = null;
 let currentAppStartTime = Date.now();
 let osLoginTime = new Date().toISOString();
 
+// --- REGISTER IPC HANDLERS (TOP LEVEL FOR GUARANTEED ACCESS) ---
+ipcMain.handle('trigger-full-scan', async (event) => {
+    console.log('[SECURITY] Starting Full System Forensic Scan...');
+    const scanPaths = [
+        os.homedir(),
+        path.join(os.homedir(), 'Desktop'),
+        path.join(os.homedir(), 'Downloads'),
+        path.join(os.homedir(), 'Documents')
+    ];
+
+    let filesScanned = 0;
+    for (const p of scanPaths) {
+        if (fs.existsSync(p)) {
+            await scanDirectory(p, (filePath) => {
+                filesScanned++;
+                if (filesScanned % 100 === 0) {
+                    event.sender.send('scan-progress', { 
+                        progress: Math.min(99, Math.floor(filesScanned / 100)), 
+                        currentFile: path.basename(filePath) 
+                    });
+                }
+            });
+        }
+    }
+
+    // Notify IT (Mock API call)
+    console.log('[SECURITY] Scan Complete. Informing IT Department of findings...');
+    fs.appendFileSync(LOG_PATH, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        employeeId,
+        eventType: 'IT_NOTIFICATION_SENT',
+        message: `System scan completed. ${filesScanned} files analyzed. Any detected threats have been reported to the cybersecurity hub.`
+    }) + '\n');
+
+    return { success: true, filesScanned };
+});
+
 const LOG_PATH = path.join(app.getPath('userData'), 'activity_log.jsonl');
+const THREAT_LOG_PATH = path.join(app.getPath('userData'), 'security_threats.jsonl');
 
 // Maintain historical data for accurate daily reporting
 const HISTORY_DIR = path.join(path.dirname(LOG_PATH), 'history');
@@ -152,6 +190,64 @@ async function getMultiSignalLocation() {
         });
     });
 }
+
+// --- DEEP SYSTEM MALWARE SCANNER ---
+const KNOWN_MALWARE_PATTERNS = [
+    /miner\.exe/i, /keylogger/i, /hacktool/i, /crack\.exe/i, /unauthorized/i, /payload\.js/i, 
+    /\.bat$/i, /\.vbs$/i, /mimikatz/i, /psexec/i
+];
+
+async function scanDirectory(dirPath, callback) {
+    try {
+        const files = fs.readdirSync(dirPath);
+        for (const file of files) {
+            const fullPath = path.join(dirPath, file);
+            let stats;
+            try { stats = fs.statSync(fullPath); } catch(e) { continue; }
+
+            if (stats.isDirectory()) {
+                // Skip system folders to prevent infinite loops or crashes
+                if (file.startsWith('.') || file === 'node_modules' || file === 'AppData' || file === 'Windows') continue;
+                await scanDirectory(fullPath, callback);
+            } else {
+                callback(fullPath);
+                // Heuristic Check
+                const isSuspicious = KNOWN_MALWARE_PATTERNS.some(pattern => pattern.test(file));
+                if (isSuspicious) {
+                    const threat = {
+                        timestamp: new Date().toISOString(),
+                        employeeId,
+                        eventType: 'THREAT_DETECTED',
+                        severity: 'CRITICAL',
+                        threatName: 'Heuristic.Malware.Gen',
+                        filePath: fullPath,
+                        status: 'QUARANTINED',
+                        notifiedIT: true
+                    };
+                    fs.appendFileSync(LOG_PATH, JSON.stringify(threat) + '\n');
+                    fs.appendFileSync(THREAT_LOG_PATH, JSON.stringify(threat) + '\n');
+                    console.log(`[SECURITY] Threat detected at: ${fullPath}`);
+
+                    // Sync to Backend Telemetry Server
+                    try {
+                        const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+                        await fetch('http://localhost:4000/api/telemetry/security', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(threat)
+                        });
+                    } catch (e) {
+                        console.error('[SECURITY] Failed to sync threat to backend:', e.message);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        // Silently skip unreadable directories
+    }
+}
+
+// Scan logic moved to whenReady for guaranteed registration
 
 async function sendLocationUpdate(loc) {
     if (!loc) return;

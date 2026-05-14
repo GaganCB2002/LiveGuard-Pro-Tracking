@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   BarChart3, 
@@ -28,7 +28,11 @@ import {
   Target,
   FileSearch,
   Fingerprint,
-  Bell
+  Bell,
+  UserCheck,
+  Camera,
+  MapPin,
+  RefreshCw
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { generateEnterpriseReport } from './utils/reportEngine';
@@ -300,6 +304,26 @@ export default function Dashboard() {
   });
   const [currentTab, setCurrentTab] = useState('Overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [profile, setProfile] = useState({
+    name: 'Gagan',
+    id: 'EMP-GAGAN',
+    email: 'gagan@worksphere.com',
+    dept: 'Product Engineering'
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'System Security Active', message: 'All hardware sensors verified.', time: 'Just now', type: 'success' },
+    { id: 2, title: 'Shift Started', message: 'Activity tracking is now live.', time: '10m ago', type: 'info' }
+  ]);
+
+  // Face Capture State
+  const [showCapture, setShowCapture] = useState(false);
+  const [captureType, setCaptureType] = useState<'login' | 'logout'>('login');
+  const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+  const [hasLoggedInToday, setHasLoggedInToday] = useState(false);
+  const [lastLoginInfo, setLastLoginInfo] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -321,8 +345,44 @@ export default function Dashboard() {
       fetchTelemetry();
     }, 1000); // 1 second high-speed polling
 
+    // Check if login capture is needed
+    const lastLogin = localStorage.getItem('last_login_date');
+    const today = new Date().toLocaleDateString();
+    if (lastLogin !== today) {
+        setTimeout(() => {
+            setCaptureType('login');
+            setShowCapture(true);
+        }, 1000);
+    } else {
+        setHasLoggedInToday(true);
+    }
+
+    // Load attendance logs
+    const savedLogs = localStorage.getItem('attendance_logs');
+    if (savedLogs) {
+      const logs = JSON.parse(savedLogs);
+      setAttendanceLogs(logs);
+      if (logs.length > 0) {
+        setLastLoginInfo(logs[logs.length - 1]);
+      }
+    }
+
+    const sessionAuth = localStorage.getItem('is_authenticated');
+    if (sessionAuth === 'true') setIsAuthenticated(true);
+
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (telemetry.employeeId && !isEditingProfile) {
+      setProfile(prev => ({
+        ...prev,
+        id: telemetry.employeeId,
+        email: telemetry.email || prev.email,
+        dept: telemetry.department || prev.dept
+      }));
+    }
+  }, [telemetry.employeeId, telemetry.email, telemetry.department, isEditingProfile]);
 
   const formatDuration = (seconds: number) => {
     if (isNaN(seconds) || seconds === undefined || seconds === null) return '0h 0m 0s';
@@ -351,6 +411,104 @@ export default function Dashboard() {
   const isStandby = telemetry.status === 'STANDBY_MODE' || telemetry.latest.eventType === 'STANDBY';
   const statusColor = isStandby ? '#3b82f6' : (telemetry.isBreak ? '#f59e0b' : (isActive ? '#22c55e' : '#71717a'));
   const statusText = isStandby ? 'STANDBY MODE' : (telemetry.isBreak ? 'ON BREAK' : (isActive ? 'TRACKING LIVE' : 'IDLE / LOCKED'));
+
+  if (!isAuthenticated) {
+    return (
+      <div style={{ 
+        height: '100vh', width: '100vw', background: '#020617', 
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', position: 'relative',
+        fontFamily: 'Inter, system-ui, sans-serif'
+      }}>
+        {/* Animated Background Elements */}
+        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', filter: 'blur(80px)' }}></div>
+        <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: 'radial-gradient(circle, rgba(0, 229, 143, 0.05) 0%, transparent 70%)', filter: 'blur(80px)' }}></div>
+
+        <div style={{ zIndex: 10, textAlign: 'center', maxWidth: '500px', animation: 'fadeIn 0.8s ease-out' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+            <div style={{ padding: '1.25rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '24px', border: '1px solid rgba(59, 130, 246, 0.2)', boxShadow: '0 0 40px rgba(59, 130, 246, 0.1)' }}>
+              <Shield size={56} color="#3b82f6" strokeWidth={1.5} />
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <h1 style={{ fontSize: '3rem', fontWeight: 950, letterSpacing: '-0.04em', margin: 0, color: 'white', lineHeight: 1 }}>WorkSphere</h1>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.4em', marginTop: '0.4rem' }}>Enterprise Intelligence</div>
+            </div>
+          </div>
+
+          <div style={{ 
+            background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(20px)', 
+            border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '32px', padding: '3.5rem',
+            boxShadow: '0 40px 80px -20px rgba(0, 0, 0, 0.8)'
+          }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '0.8rem', letterSpacing: '-0.02em' }}>Unified Session Access</h2>
+            <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem' }}>
+              Welcome back. The system is ready for identity validation. Please click below to initiate your secure session.
+            </p>
+
+            <button 
+              onClick={() => { setCaptureType('login'); setShowCapture(true); }}
+              style={{ 
+                width: '100%', padding: '1.4rem', borderRadius: '18px', border: 'none',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: 'white', fontSize: '1.15rem', fontWeight: 950, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                boxShadow: '0 12px 35px -10px rgba(59, 130, 246, 0.6)',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 20px 45px -10px rgba(59, 130, 246, 0.7)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = '0 12px 35px -10px rgba(59, 130, 246, 0.6)';
+              }}
+            >
+              <Camera size={26} />
+              LOGIN TO WORKSPACE
+            </button>
+
+            <div style={{ marginTop: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e58f', boxShadow: '0 0 10px #00e58f' }}></div>
+                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>GPS Active</span>
+              </div>
+              <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e58f', boxShadow: '0 0 10px #00e58f' }}></div>
+                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Biometric Ready</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '4rem', fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+            WorkSphere Global Security Protocol &bull; v2026.4
+          </div>
+        </div>
+
+        {/* Modal needs to be here too */}
+        {showCapture && (
+          <FaceCaptureModal 
+            type={captureType} 
+            onCapture={(data) => {
+              const newLogs = [...attendanceLogs, data];
+              setAttendanceLogs(newLogs);
+              setLastLoginInfo(data);
+              localStorage.setItem('attendance_logs', JSON.stringify(newLogs));
+              
+              if (captureType === 'login') {
+                setHasLoggedInToday(true);
+                setIsAuthenticated(true);
+                localStorage.setItem('is_authenticated', 'true');
+                setShowCapture(false);
+              }
+            }}
+            onClose={() => setShowCapture(false)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -475,6 +633,7 @@ export default function Dashboard() {
           <SidebarLink active={currentTab === 'Analytics'} icon={<LineChart size={18} />} label={sidebarCollapsed ? "" : "Analytics"} onClick={() => setCurrentTab('Analytics')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'Live Tracking'} icon={<Target size={18} />} label={sidebarCollapsed ? "" : "Live Tracking"} onClick={() => setCurrentTab('Live Tracking')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'Reports'} icon={<FileSearch size={18} />} label={sidebarCollapsed ? "" : "Reports"} onClick={() => setCurrentTab('Reports')} collapsed={sidebarCollapsed} />
+          <SidebarLink active={currentTab === 'Attendance'} icon={<UserCheck size={18} />} label={sidebarCollapsed ? "" : "Attendance"} onClick={() => setCurrentTab('Attendance')} collapsed={sidebarCollapsed} />
           <SidebarLink active={currentTab === 'System Audit'} icon={<Fingerprint size={18} />} label={sidebarCollapsed ? "" : "System Audit"} onClick={() => setCurrentTab('System Audit')} collapsed={sidebarCollapsed} />
         </nav>
 
@@ -484,12 +643,9 @@ export default function Dashboard() {
             icon={<LogOut size={18} color="#ef4444" />} 
             label={sidebarCollapsed ? "" : "Logout System"} 
             collapsed={sidebarCollapsed}
-            onClick={() => {
-              if(confirm('Terminate current tracking session?')) {
-                fetch('/api/logout', { method: 'POST' }).then(() => {
-                  window.location.reload();
-                });
-              }
+            onClick={async () => {
+              setCaptureType('logout');
+              setShowCapture(true);
             }} 
           />
         </div>
@@ -528,9 +684,32 @@ export default function Dashboard() {
                 Session: {mounted ? new Date(telemetry.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
               </div>
             </div>
-            <div style={{ position: 'relative', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
-               <Bell size={18} color="var(--text-secondary)" />
+            <div 
+              onClick={() => setShowNotifications(!showNotifications)}
+              style={{ position: 'relative', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            >
+               <Bell size={18} color={showNotifications ? 'var(--accent-blue)' : "var(--text-secondary)"} />
                <div style={{ position: 'absolute', top: '0', right: '0', background: 'var(--accent-blue)', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-primary)' }}></div>
+               
+               {showNotifications && (
+                 <div style={{ 
+                   position: 'absolute', top: '100%', right: '0', marginTop: '1rem', width: '300px', 
+                   background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', 
+                   borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', zIndex: 100,
+                   overflow: 'hidden', animation: 'slideDown 0.3s ease'
+                 }}>
+                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Notifications</div>
+                   <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                     {notifications.map(n => (
+                       <div key={n.id} style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', cursor: 'default' }}>
+                         <div style={{ fontWeight: 700, fontSize: '0.85rem', color: n.type === 'success' ? 'var(--accent-green)' : 'var(--text-primary)' }}>{n.title}</div>
+                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{n.message}</div>
+                         <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontWeight: 600 }}>{n.time}</div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
             </div>
             <div style={{ 
               width: '28px', 
@@ -590,7 +769,7 @@ export default function Dashboard() {
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                backgroundGradient: 'radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)'
+                backgroundImage: 'radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: statusColor }}>
@@ -999,12 +1178,63 @@ export default function Dashboard() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem' }}>
                         <div>
                           <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee Name / ID</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', color: '#0f172a' }}>{telemetry.employeeId}</div>
+                          <input 
+                            value={profile.id} 
+                            onChange={(e) => setProfile({...profile, id: e.target.value})}
+                            onFocus={() => setIsEditingProfile(true)}
+                            onBlur={() => setTimeout(() => setIsEditingProfile(false), 5000)}
+                            style={{ 
+                              fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', color: '#0f172a', 
+                              border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.8rem', width: '100%',
+                              outline: 'none', background: '#f8fafc'
+                            }} 
+                          />
                         </div>
                         <div>
                           <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registered Email</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', color: '#0f172a' }}>{telemetry.email}</div>
+                          <input 
+                            value={profile.email} 
+                            onChange={(e) => setProfile({...profile, email: e.target.value})}
+                            onFocus={() => setIsEditingProfile(true)}
+                            onBlur={() => setTimeout(() => setIsEditingProfile(false), 5000)}
+                            style={{ 
+                              fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', color: '#0f172a', 
+                              border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.8rem', width: '100%',
+                              outline: 'none', background: '#f8fafc'
+                            }} 
+                          />
                         </div>
+                      </div>
+
+                      <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                          <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Last Session Verification</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginTop: '0.3rem' }}>
+                            {lastLoginInfo ? `${lastLoginInfo.date} @ ${lastLoginInfo.time}` : 'No active session verified'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Verification Location</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#3b82f6', marginTop: '0.3rem', lineHeight: 1.4 }}>
+                            {lastLoginInfo ? lastLoginInfo.address : 'System GPS Standby'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                         <button 
+                           onClick={() => {
+                             setIsEditingProfile(false);
+                             setNotifications([{ id: Date.now(), title: 'Profile Updated', message: 'System records have been updated successfully.', time: 'Just now', type: 'success' }, ...notifications]);
+                             alert('Profile updated successfully!');
+                           }}
+                           style={{ 
+                             background: '#0f172a', color: 'white', border: 'none', padding: '0.6rem 1.5rem', 
+                             borderRadius: '8px', fontWeight: 800, cursor: 'pointer', fontSize: '0.85rem'
+                           }}
+                         >
+                           Update System Record
+                         </button>
                       </div>
                     </div>
 
@@ -1082,6 +1312,56 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+
+          {currentTab === 'Attendance' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Attendance Intelligence</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>Visual verification of login and logout sequences with biometric metadata.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                {attendanceLogs.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', padding: '4rem', background: 'var(--bg-secondary)', borderRadius: '24px', border: '1px dashed var(--border-strong)', textAlign: 'center' }}>
+                    <Camera size={48} color="var(--text-muted)" style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                    <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>No attendance records found for this period.</div>
+                  </div>
+                ) : (
+                  attendanceLogs.slice().reverse().map((log: any, i: number) => (
+                    <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border-strong)', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                      <div style={{ position: 'relative', height: '200px', background: '#000' }}>
+                        <img src={log.image} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', background: log.type === 'login' ? 'var(--accent-green)' : '#ef4444', color: 'black', fontSize: '0.65rem', fontWeight: 900, padding: '4px 10px', borderRadius: '100px', textTransform: 'uppercase' }}>
+                          {log.type}
+                        </div>
+                      </div>
+                      <div style={{ padding: '1.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                          <div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Timestamp</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>{log.time}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Date</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>{log.date}</div>
+                          </div>
+                        </div>
+                        <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                             <MapPin size={12} color="var(--accent-blue)" />
+                             <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Verified Location</span>
+                           </div>
+                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1.4 }}>{log.address}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
           
           {currentTab === 'System Audit' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -1090,10 +1370,199 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* Face Capture Modal */}
+      {showCapture && (
+        <FaceCaptureModal 
+          type={captureType} 
+          onCapture={(data) => {
+            const newLogs = [...attendanceLogs, data];
+            setAttendanceLogs(newLogs);
+            setLastLoginInfo(data);
+            localStorage.setItem('attendance_logs', JSON.stringify(newLogs));
+            
+            if (captureType === 'login') {
+              setHasLoggedInToday(true);
+              setIsAuthenticated(true);
+              localStorage.setItem('is_authenticated', 'true');
+              setShowCapture(false);
+            } else {
+              fetch('/api/logout', { method: 'POST' }).then(() => {
+                alert('Shift ended successfully. WorkSphere session terminated.');
+                window.location.reload();
+              });
+            }
+          }}
+          onClose={() => {
+            if (captureType === 'logout') setShowCapture(false);
+            // Login capture is mandatory, cannot close without it unless already logged in
+          }}
+        />
+      )}
     </div>
   );
 }
 
+function FaceCaptureModal({ type, onCapture, onClose }: { type: 'login' | 'logout', onCapture: (data: any) => void, onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [address, setAddress] = useState('Fetching high-precision location...');
+  const [coords, setCoords] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isCaptured, setIsCaptured] = useState(false);
+
+  useEffect(() => {
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+      .then(stream => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsCameraReady(true);
+        }
+      })
+      .catch(err => {
+        console.error("Camera error:", err);
+        alert("Camera access is required for identity verification.");
+      });
+
+    // Get Location
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setCoords(pos.coords);
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+          const data = await res.json();
+          setAddress(data.display_name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+        } catch (e) {
+          setAddress(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)} (GPS Lock)`);
+        }
+      },
+      () => setAddress('Location access denied. Using fallback node.')
+    );
+
+    return () => {
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const handleCapture = () => {
+    if (!videoRef.current || !canvasRef.current || isProcessing || isCaptured) return;
+    
+    setIsProcessing(true);
+    const context = canvasRef.current.getContext('2d');
+    if (!context) {
+      setIsProcessing(false);
+      return;
+    }
+
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    context.drawImage(videoRef.current, 0, 0);
+    
+    const imageData = canvasRef.current.toDataURL('image/jpeg', 0.8);
+    setIsCaptured(true);
+    
+    onCapture({
+      type,
+      image: imageData,
+      time: new Date().toLocaleTimeString(),
+      date: new Date().toLocaleDateString(),
+      address: address,
+      coords: coords ? { lat: coords.latitude, lng: coords.longitude } : null
+    });
+  };
+
+  return (
+    <div style={{ 
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+      padding: '2rem'
+    }}>
+      <div style={{ 
+        width: '100%', maxWidth: '500px', background: 'var(--bg-secondary)', 
+        borderRadius: '32px', border: '1px solid var(--border-strong)',
+        boxShadow: '0 30px 60px rgba(0,0,0,0.6)', overflow: 'hidden'
+      }}>
+        <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'inline-flex', padding: '12px', background: type === 'login' ? 'rgba(0, 229, 143, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: '16px', marginBottom: '1rem' }}>
+            {type === 'login' ? <UserCheck size={32} color="var(--accent-green)" /> : <LogOut size={32} color="#ef4444" />}
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+            {type === 'login' ? 'Identity Verification' : 'Shift Termination'}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
+            Biometric face capture required to {type === 'login' ? 'start' : 'end'} your session.
+          </p>
+        </div>
+
+        <div style={{ padding: '2rem' }}>
+          <div style={{ 
+            position: 'relative', width: '100%', aspectRatio: '4/3', 
+            background: '#000', borderRadius: '20px', overflow: 'hidden',
+            border: '2px solid var(--border-strong)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
+          }}>
+            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            {!isCameraReady && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                <RefreshCw size={32} className="animate-spin" />
+              </div>
+            )}
+            <div style={{ position: 'absolute', inset: 0, border: '2px solid var(--accent-blue)', borderRadius: '20px', opacity: 0.3, pointerEvents: 'none' }}></div>
+            <div style={{ position: 'absolute', top: '12px', left: '12px', fontSize: '0.6rem', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase' }}>
+              SECURE_LINK_ACTIVE // 256-BIT
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+               <MapPin size={14} color="var(--accent-blue)" />
+               <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Current Verification Node</span>
+             </div>
+             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, lineHeight: 1.4 }}>{address}</div>
+          </div>
+
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+            {type === 'logout' && (
+              <button 
+                onClick={onClose}
+                style={{ flex: 1, background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-strong)', padding: '1rem', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            )}
+            <button 
+              onClick={() => {
+                if (isCaptured) {
+                  alert('Your photo is already captured. Processing verification...');
+                  return;
+                }
+                handleCapture();
+              }}
+              disabled={!isCameraReady || isProcessing || isCaptured}
+              style={{ 
+                flex: 2, 
+                background: isCaptured ? 'var(--text-muted)' : (type === 'login' ? 'var(--accent-green)' : '#ef4444'), 
+                color: 'black', border: 'none', padding: '1rem', borderRadius: '12px', 
+                fontWeight: 950, cursor: (isCameraReady && !isProcessing && !isCaptured) ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                boxShadow: isCaptured ? 'none' : (type === 'login' ? '0 10px 20px rgba(0, 229, 143, 0.2)' : '0 10px 20px rgba(239, 68, 68, 0.2)'),
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isProcessing ? <RefreshCw size={20} className="animate-spin" /> : <Camera size={20} />}
+              {isCaptured ? 'PHOTO CAPTURED' : (type === 'login' ? 'VERIFY & LOGIN' : 'VERIFY & LOGOUT')}
+            </button>
+          </div>
+        </div>
+      </div>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+    </div>
+  );
+}
 
 function SidebarLink({ icon, label, active = false, onClick, collapsed = false }: any) {
   return (
@@ -1143,7 +1612,7 @@ function SidebarLink({ icon, label, active = false, onClick, collapsed = false }
         }}></div>
       )}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: active ? 'var(--text-primary)' : 'inherit' }}>
-        {React.cloneElement(icon as React.ReactElement, { size: 20 })}
+        {React.cloneElement(icon as any, { size: 20 })}
       </div>
       {!collapsed && <span style={{ fontSize: '0.9rem', fontWeight: active ? 800 : 600, letterSpacing: '0.01em' }}>{label}</span>}
     </div>

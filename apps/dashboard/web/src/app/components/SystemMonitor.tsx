@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Zap, Cpu, Activity, Wifi, Battery, Clock, AlertTriangle, BarChart3, Gauge, Thermometer } from 'lucide-react';
+import { Shield, Zap, Cpu, Activity, Wifi, Battery, Clock, AlertTriangle, BarChart3, Gauge, Thermometer, Signal } from 'lucide-react';
 
 /**
  * SystemMonitor - Premium Browser-Native Diagnostics

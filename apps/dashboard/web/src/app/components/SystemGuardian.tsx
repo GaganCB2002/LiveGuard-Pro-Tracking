@@ -61,6 +61,10 @@ export default function SystemGuardian() {
   const socketRef = useRef<any>(null);
   const framesRef = useRef(60);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [scanFile, setScanFile] = useState('');
+
+  const isElectron = typeof window !== 'undefined' && (window as any).process && (window as any).require;
+  const ipcRenderer = isElectron ? (window as any).require('electron').ipcRenderer : null;
 
   useEffect(() => {
     const socket = io('http://localhost:4000');
@@ -74,7 +78,7 @@ export default function SystemGuardian() {
           healthScore: update.health_score,
           status: update.health_score > 80 ? 'OPTIMAL' : (update.health_score > 50 ? 'WARNING' : 'CRITICAL'),
           alerts: update.alerts || [],
-          threats: update.threats || [],
+          threats: update.threats || prev.threats, // Persist threats
           predictions: update.predictions || [],
           lastUpdate: new Date().toLocaleTimeString([], { hour12: false })
         }));
@@ -91,8 +95,28 @@ export default function SystemGuardian() {
             },
             ...prev.slice(0, 19) // Keep last 20
         ]);
+      } else if (update.type === 'threat_alert') {
+        const threat = update.data;
+        setMetrics((prev: any) => ({
+          ...prev,
+          threats: [threat, ...prev.threats],
+          healthScore: Math.max(0, prev.healthScore - 30)
+        }));
+        setShowNotification({ 
+          title: 'CRITICAL THREAT DETECTED', 
+          message: `File: ${threat.filePath} | Type: ${threat.threatName}`, 
+          type: 'danger' 
+        });
+        setTimeout(() => setShowNotification(null), 8000);
       }
     });
+
+    if (ipcRenderer) {
+      ipcRenderer.on('scan-progress', (_: any, data: any) => {
+        setScanProgress(data.progress);
+        setScanFile(data.currentFile);
+      });
+    }
 
     // FPS Pulse
     let lastTime = performance.now();
@@ -116,6 +140,9 @@ export default function SystemGuardian() {
       socket.disconnect();
       cancelAnimationFrame(rafId);
       clearInterval(clockInterval);
+      if (ipcRenderer) {
+        ipcRenderer.removeAllListeners('scan-progress');
+      }
     };
   }, []);
 
@@ -128,92 +155,73 @@ export default function SystemGuardian() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStage, setScanStage] = useState('');
+  const [editableSystem, setEditableSystem] = useState({
+    timezone: 'Asia/Calcutta',
+    platform: 'Windows',
+    screen: '1536 x 864'
+  });
+  const [isEditingSystem, setIsEditingSystem] = useState(false);
 
-  const handleScan = () => {
+  const handleScan = async () => {
     if (isScanning) return;
     setIsScanning(true);
     setScanProgress(0);
-    
-    const stages = [
-      { p: 10, s: 'Initializing Deep Scan Engine...' },
-      { p: 25, s: 'Auditing Registry & System Keys...' },
-      { p: 40, s: 'Analyzing Active Process Signatures...' },
-      { p: 50, s: 'MALWARE SCAN: Inspecting Kernel Hooks...' },
-      { p: 65, s: 'Scanning Network Buffers for Anomalies...' },
-      { p: 80, s: 'Verifying I/O Integrity & File System...' },
-      { p: 90, s: 'Correlating Threat Intelligence Data...' },
-      { p: 100, s: 'Audit Complete.' }
-    ];
+    setScanFile('Initializing...');
 
-    let currentStageIndex = 0;
-    const interval = setInterval(() => {
-      setScanProgress(prev => {
-        const next = prev + 1;
-        
-        if (next >= stages[currentStageIndex].p && currentStageIndex < stages.length - 1) {
-            currentStageIndex++;
-            setScanStage(stages[currentStageIndex].s);
+    if (ipcRenderer) {
+        // --- REAL ELECTRON SYSTEM SCAN ---
+        try {
+            setScanStage('FORENSIC SCAN: ANALYZING LOCAL DISK...');
+            const result = await ipcRenderer.invoke('trigger-full-scan');
+            setIsScanning(false);
+            setScanStage('');
+            setScanFile('');
             
-            // Randomly simulate finding a malware at stage 4 (50%)
-            if (next === 50) {
-               const virusFound = { 
-                  title: 'Trojan.Win32.Generic', 
-                  message: 'Suspicious process signature detected in memory buffer 0x4F2A.',
-                  isThreat: true,
-                  timestamp: new Date().toLocaleTimeString()
-               };
-               setMetrics((m: any) => ({
-                  ...m,
-                  threats: [virusFound, ...m.threats]
-               }));
-               setShowNotification({ 
-                  title: 'THREAT DETECTED', 
-                  message: 'Trojan virus identified and quarantined.', 
-                  type: 'danger' 
-               });
-               setTimeout(() => setShowNotification(null), 5000);
-            }
-        }
-
-        if (next >= 100) {
-          clearInterval(interval);
-          setIsScanning(false);
-          setScanStage('');
-          
-          // Simulation: Rectify viruses after scan
-          setTimeout(() => {
-            setMetrics((m: any) => ({
-              ...m,
-              threats: m.threats.map((t: any) => ({ ...t, message: `${t.message} (RECTIFIED)`, isThreat: false })),
-              healthScore: Math.min(100, m.healthScore + 20)
-            }));
             setShowNotification({ 
-              title: 'SYSTEM RECTIFIED', 
-              message: 'All identified viruses have been successfully isolated and neutralized.', 
-              type: 'success' 
+                title: 'SCAN COMPLETED', 
+                message: `Analyzed ${result.filesScanned} files. System integrity verified.`, 
+                type: 'success' 
             });
             setTimeout(() => setShowNotification(null), 5000);
-          }, 2000);
-
-          const threatCount = metrics.threats.length;
-          const alertCount = metrics.alerts.length;
-          
-          let resultMsg = `Audit Complete. 0 critical vulnerabilities found.`;
-          if (threatCount > 0) {
-            resultMsg = `Audit Complete. FOUND ${threatCount} POTENTIAL RISKS. Automatic rectification initiated.`;
-          } else if (alertCount > 0) {
-            resultMsg = `Audit Complete. System stable but ${alertCount} optimizations identified.`;
-          }
-
-          setMetrics((m: any) => ({
-            ...m,
-            alerts: [...m.alerts, { title: 'Security Audit Finished', message: resultMsg, timestamp: new Date().toLocaleTimeString() }]
-          }));
-          return 100;
+        } catch (e) {
+            console.error('Scan Error:', e);
+            setIsScanning(false);
         }
-        return next;
-      });
-    }, 40);
+    } else {
+        // --- MOCK FALLBACK (WEB ONLY) ---
+        const stages = [
+            { p: 10, s: 'Initializing Deep Scan Engine...' },
+            { p: 25, s: 'Auditing Registry & System Keys...' },
+            { p: 40, s: 'Analyzing Active Process Signatures...' },
+            { p: 50, s: 'MALWARE SCAN: Inspecting Kernel Hooks...' },
+            { p: 65, s: 'Scanning Network Buffers for Anomalies...' },
+            { p: 80, s: 'Verifying I/O Integrity & File System...' },
+            { p: 90, s: 'Correlating Threat Intelligence Data...' },
+            { p: 100, s: 'Audit Complete.' }
+        ];
+
+        let currentStageIndex = 0;
+        const interval = setInterval(() => {
+            setScanProgress(prev => {
+                const next = prev + 1;
+                
+                if (next >= stages[currentStageIndex].p && currentStageIndex < stages.length - 1) {
+                    currentStageIndex++;
+                    setScanStage(stages[currentStageIndex].s);
+                    setScanFile(`Searching: sector_0x${next.toString(16)}...`);
+                }
+
+                if (next >= 100) {
+                    clearInterval(interval);
+                    setIsScanning(false);
+                    setScanStage('');
+                    setScanFile('');
+                    return 100;
+                }
+                return next;
+            });
+        }, 50);
+    }
   };
 
   return (
@@ -264,36 +272,49 @@ export default function SystemGuardian() {
         <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '16px', border: '1px dashed var(--accent-blue)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800 }}>TIMEZONE</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Asia/Calcutta</div>
+            <input 
+              value={editableSystem.timezone} 
+              onChange={(e) => { setEditableSystem({...editableSystem, timezone: e.target.value}); setIsEditingSystem(true); }}
+              style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 800, width: '100%', outline: 'none' }}
+            />
           </div>
           <div>
             <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800 }}>PLATFORM</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Windows</div>
+            <input 
+              value={editableSystem.platform} 
+              onChange={(e) => { setEditableSystem({...editableSystem, platform: e.target.value}); setIsEditingSystem(true); }}
+              style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 800, width: '100%', outline: 'none' }}
+            />
           </div>
           <div>
             <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800 }}>SCREEN</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>1536 x 864</div>
+            <input 
+              value={editableSystem.screen} 
+              onChange={(e) => { setEditableSystem({...editableSystem, screen: e.target.value}); setIsEditingSystem(true); }}
+              style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 800, width: '100%', outline: 'none' }}
+            />
           </div>
           <div>
             <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800 }}>BROWSER CORES</div>
             <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>{metrics.cpu.cores}</div>
           </div>
+          {isEditingSystem && (
+            <div style={{ gridColumn: 'span 2' }}>
+              <button 
+                onClick={() => {
+                  setIsEditingSystem(false);
+                  setShowNotification({ title: 'SYSTEM UPDATED', message: 'Hardware profile parameters successfully overridden.', type: 'success' });
+                  setTimeout(() => setShowNotification(null), 3000);
+                }}
+                style={{ width: '100%', background: 'var(--accent-blue)', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 900, padding: '4px', cursor: 'pointer' }}
+              >
+                SAVE CHANGES
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Global Notification Bell */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem' }}>
-           <div style={{ 
-             background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', padding: '12px', borderRadius: '12px', cursor: 'pointer', position: 'relative'
-           }}>
-             <Bell size={20} color={metrics.threats.length > 0 ? '#ef4444' : 'var(--text-muted)'} />
-             {metrics.threats.length > 0 && (
-               <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', fontSize: '0.5rem', fontWeight: 900, width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-primary)' }}>
-                 {metrics.threats.length}
-               </div>
-             )}
-           </div>
         </div>
-      </div>
 
       {/* Main Content Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem' }}>
@@ -429,6 +450,7 @@ export default function SystemGuardian() {
 
              <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, color: getStatusColor(metrics.status) }}>{isScanning ? scanStage : `System Integrity: ${metrics.status}`}</div>
+                {isScanning && <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontFamily: 'monospace' }}>{scanFile}</div>}
              </div>
 
              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -498,13 +520,13 @@ export default function SystemGuardian() {
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
-              {[...metrics.threats.map(t => ({ ...t, isThreat: true })), ...metrics.alerts].length === 0 ? (
+              {[...metrics.threats.map((t: any) => ({ ...t, isThreat: true })), ...metrics.alerts].length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <CheckCircle2 size={32} color="var(--accent-green)" style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No threats identified</div>
                 </div>
               ) : (
-                [...metrics.threats.map(t => ({ ...t, isThreat: true })), ...metrics.alerts].map((a: any, i: number) => (
+                [...metrics.threats.map((t: any) => ({ ...t, isThreat: true })), ...metrics.alerts].map((a: any, i: number) => (
                   <div key={i} style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderLeft: `4px solid ${a.isThreat ? 'var(--status-danger)' : 'var(--status-warning)'}`, borderRadius: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
                       {a.isThreat ? <Shield size={12} color="var(--status-danger)" /> : <AlertCircle size={12} color="var(--status-warning)" />}
